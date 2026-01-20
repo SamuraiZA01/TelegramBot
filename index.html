@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SQUAD EMPIRE LIVE</title>
+    <title>SQUAD EMPIRE FINAL</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -15,7 +15,7 @@
         #tap-target:active { transform: scale(0.9); }
         .shop-container { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); height: 260px; border-radius: 20px 20px 0 0; padding: 15px; z-index: 100; border-top: 1px solid #333; display: flex; flex-direction: column; }
         .nav-tabs { display: flex; gap: 10px; margin-bottom: 10px; }
-        .nav-btn { flex: 1; padding: 10px; background: #242b38; border: none; color: white; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .nav-btn { flex: 1; padding: 10px; background: #242b38; border: none; color: white; border-radius: 10px; font-weight: bold; }
         .nav-btn.active { background: var(--accent); }
         .content-area { flex-grow: 1; overflow-y: auto; }
         .list-item { display: flex; justify-content: space-between; padding: 12px; background: #242b38; margin-bottom: 8px; border-radius: 12px; align-items: center; border: 1px solid #333; }
@@ -52,10 +52,9 @@
 
         let supabase = null;
         try {
-            if (SB_URL.startsWith("https")) {
-                supabase = window.supabase.createClient(SB_URL, SB_KEY);
-                console.log("Database connected.");
-            }
+            // Re-established direct connection
+            supabase = window.supabase.createClient(SB_URL, SB_KEY);
+            console.log("Database connected.");
         } catch (e) { console.error("DB Error:", e); }
 
         let tg = window.Telegram.WebApp;
@@ -72,7 +71,6 @@
             { id: 'office', name: 'Studio', cost: 500, power: 15 }
         ];
 
-        // --- TABS ---
         function showTab(tab) {
             document.getElementById('market-view').style.display = tab === 'market' ? 'block' : 'none';
             document.getElementById('leader-view').style.display = tab === 'leader' ? 'block' : 'none';
@@ -81,13 +79,16 @@
             if (tab === 'leader') updateLeaderboardUI();
         }
 
-        // --- LEADERBOARD LOGIC ---
         async function updateLeaderboardUI() {
             if (!supabase) return;
+            // Fetch real data from your Supabase table
             const { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
-            if (error) return;
+            if (error) {
+                document.getElementById('leader-view').innerText = "Error loading leaderboard.";
+                return;
+            }
             
-            let html = '';
+            let html = '<h3 style="margin-top:0">Global Ranks</h3>';
             data.forEach((p, i) => {
                 let isMe = p.user_id == tg.initDataUnsafe?.user?.id;
                 html += `<div class="list-item ${isMe ? 'rank-me' : ''}">
@@ -101,6 +102,7 @@
         async function syncToCloud() {
             if (!supabase || !tg.initDataUnsafe?.user) return;
             try {
+                // Sends your score to Supabase
                 await supabase.from('leaderboard').upsert({ 
                     user_id: String(tg.initDataUnsafe.user.id), 
                     username: tg.initDataUnsafe.user.username || "Player", 
@@ -109,7 +111,6 @@
             } catch (e) { }
         }
 
-        // --- CORE GAME ---
         function mainLoop() {
             game.balance += (game.income / 10);
             document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
@@ -138,7 +139,7 @@
         }
 
         function renderShop() {
-            let html = '';
+            let html = '<h3 style="margin-top:0">Upgrades</h3>';
             ITEMS.forEach((item, idx) => {
                 let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
                 html += `<div class="list-item">
@@ -151,6 +152,7 @@
 
         renderShop();
         mainLoop();
+        // Sync score to database every 10 seconds
         setInterval(syncToCloud, 10000);
     </script>
 </body>
