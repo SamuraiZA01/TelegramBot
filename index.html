@@ -3,58 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Empire Master: Gesture Pro</title>
+    <title>Empire Master: Pro Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --locked: #475569; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; touch-action: none; }
+        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --locked: #475569; --danger: #ef4444; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; touch-action: none; user-select: none; }
         
         /* Dashboard */
         .header { padding: 15px 20px; background: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #334155; }
         .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
 
         /* Game Area */
-        .click-area { height: 40vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .click-area { height: 40vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         #main-target { 
             width: 170px; height: 170px; border-radius: 50%; 
             background: radial-gradient(circle, #3b82f6, #1e3a8a); 
             display: flex; align-items: center; justify-content: center; 
             box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); 
-            cursor: pointer; transition: transform 0.05s; 
+            cursor: pointer; transition: transform 0.05s; z-index: 10;
         }
         #main-target:active { transform: scale(0.92); }
-        #main-target img { width: 90px; height: 90px; object-fit: contain; }
+        #main-target img { width: 90px; height: 90px; object-fit: contain; pointer-events: none; }
 
         /* Navigation Tabs */
         .tab-bar { display: flex; background: #2d3748; margin: 5px 20px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; }
-        .tab { flex: 1; padding: 12px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 11px; }
+        .tab { flex: 1; padding: 12px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 11px; cursor: pointer; }
         .tab.active { background: var(--primary); color: white; border-radius: 10px; }
 
-        /* GESTURE MARKET SHEET */
+        /* DRAGGABLE MARKET SHEET */
         .market-sheet { 
             position: fixed; bottom: 0; left: 0; right: 0; 
             background: var(--card); border-radius: 30px 30px 0 0; 
-            height: 85vh; transform: translateY(75%); /* Initial peek position */
+            height: 85vh; transform: translateY(75%);
             z-index: 100; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); 
             display: flex; flex-direction: column;
             will-change: transform;
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .handle { height: 45px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: grab; touch-action: none; }
+        .handle { height: 45px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: ns-resize; touch-action: none; }
         .bar { width: 50px; height: 5px; background: #475569; border-radius: 10px; }
         
-        .content { padding: 0 20px 30px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+        .content { padding: 0 20px 40px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
 
-        /* Upgrades List */
+        /* List Items */
         .item { background: #2d3748; padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #3e4b5e; }
         .item-left { display: flex; align-items: center; gap: 12px; }
         .item-icon { width: 45px; height: 45px; background: #1e293b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
         
-        .buy-btn { border: none; padding: 12px; border-radius: 12px; font-weight: bold; min-width: 105px; color: white; transition: 0.2s; }
+        .buy-btn { border: none; padding: 12px; border-radius: 12px; font-weight: bold; min-width: 105px; color: white; transition: 0.2s; cursor: pointer; }
         .btn-available { background: var(--primary); box-shadow: 0 4px 0 #1d4ed8; }
         .btn-locked { background: var(--locked); opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
 
-        .pop { position: absolute; color: var(--accent); font-weight: bold; animation: popUp 0.6s forwards; pointer-events: none; z-index: 200; }
+        .pop { position: absolute; color: var(--accent); font-weight: bold; animation: popUp 0.6s forwards; pointer-events: none; z-index: 200; font-size: 20px; }
         @keyframes popUp { to { transform: translateY(-100px); opacity: 0; } }
     </style>
 </head>
@@ -62,11 +62,13 @@
 
     <div class="header">
         <div><div style="font-size: 10px; color: #94a3b8;">BALANCE</div><div class="stat-val">$<span id="bal">0</span></div></div>
-        <div style="text-align: right;"><div style="font-size: 10px; color: #94a3b8;">EARNINGS</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
+        <div style="text-align: right;"><div style="font-size: 10px; color: #94a3b8;">PASSIVE INCOME</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
     </div>
 
     <div class="click-area">
-        <div id="main-target" onclick="doClick(event)"><img id="target-img" src="https://img.icons8.com/fluency/240/rocket.png"></div>
+        <div id="main-target" onmousedown="doClick(event)" ontouchstart="doClick(event)">
+            <img id="target-img" src="https://img.icons8.com/fluency/240/rocket.png">
+        </div>
         <div style="margin-top:20px; width:80%;">
             <div id="nrg-t" style="font-size:11px; margin-bottom:4px;">Energy: 1000/1000</div>
             <div style="background:#334155; height:6px; border-radius:3px; overflow:hidden;"><div id="nrg-f" style="background:var(--success); width:100%; height:100%;"></div></div>
@@ -74,9 +76,9 @@
     </div>
 
     <div class="tab-bar">
-        <button class="tab active" onclick="setTab('market')">🏢 UPGRADES</button>
+        <button class="tab active" onclick="setTab('market')">🛒 UPGRADES</button>
         <button class="tab" onclick="setTab('skins')">👕 SKINS</button>
-        <button class="tab" onclick="setTab('gamble')">🎰 RISK</button>
+        <button class="tab" onclick="setTab('gamble')">🎰 GAMBLE</button>
     </div>
 
     <div class="market-sheet" id="sheet">
@@ -91,20 +93,20 @@
         let currentTab = 'market';
         let isExpanded = false;
 
-        let game = JSON.parse(localStorage.getItem('pixel_v6')) || {
-            bal: 0, psv: 0, nrg: 1000, mult: 1, skin: 'https://img.icons8.com/fluency/240/rocket.png',
-            up: { intern: 0, office: 0, manager: 0, factory: 0, skyscraper: 0, bank: 0, city: 0 }
+        // --- GAME STATE ---
+        let game = JSON.parse(localStorage.getItem('pixel_v7')) || {
+            bal: 0, psv: 0, nrg: 1000, mult: 1, clickPower: 1, 
+            skin: 'https://img.icons8.com/fluency/240/rocket.png',
+            up: { intern: 0, office: 0, manager: 0, factory: 0, clicker: 0 }
         };
 
         const config = {
             market: { 
+                clicker:    { n: "Double Tap",  b: 100,     i: 0,    icon: "👆", isClick: true },
                 intern:     { n: "Intern",      b: 50,      i: 1,    icon: "👶" }, 
                 office:     { n: "Small Office", b: 600,     i: 12,   icon: "🏢" }, 
                 manager:    { n: "Reg. Manager", b: 3500,    i: 75,   icon: "👔" },
-                factory:    { n: "Factory",     b: 20000,   i: 450,  icon: "🏭" },
-                skyscraper: { n: "Skyscraper",  b: 85000,   i: 1800, icon: "🏙️" },
-                bank:       { n: "Federal Bank",b: 400000,  i: 9500, icon: "🏦" },
-                city:       { n: "Smart City",  b: 2000000, i: 50000,icon: "🌆" }
+                factory:    { n: "Megafactory",  b: 25000,   i: 500,  icon: "🏭" }
             },
             skins: { 
                 car:   { n: "Supercar",  c: 10000,  img: "https://img.icons8.com/fluency/240/sport-car.png", icon: "🏎️" }, 
@@ -113,42 +115,48 @@
             }
         };
 
-        // --- FLUID GESTURE LOGIC ---
+        // --- UNIVERSAL DRAG LOGIC ---
         const sheet = document.getElementById('sheet');
         const handle = document.getElementById('drag-handle');
         let startY = 0;
-        let startTranslate = 75;
+        let isDragging = false;
         let currentTranslate = 75;
 
-        handle.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            sheet.style.transition = 'none';
-        });
+        const getY = (e) => e.touches ? e.touches[0].clientY : e.clientY;
 
-        handle.addEventListener('touchmove', (e) => {
-            const moveY = e.touches[0].clientY;
+        const startDrag = (e) => {
+            startY = getY(e);
+            isDragging = true;
+            sheet.style.transition = 'none';
+        };
+
+        const onDrag = (e) => {
+            if (!isDragging) return;
+            const moveY = getY(e);
             const deltaY = ((moveY - startY) / window.innerHeight) * 100;
             let nextTranslate = (isExpanded ? 10 : 75) + deltaY;
-            
             if (nextTranslate < 5) nextTranslate = 5;
             if (nextTranslate > 85) nextTranslate = 85;
-            
             sheet.style.transform = `translateY(${nextTranslate}%)`;
             currentTranslate = nextTranslate;
-        });
+        };
 
-        handle.addEventListener('touchend', () => {
+        const endDrag = () => {
+            if (!isDragging) return;
+            isDragging = false;
             sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            if (currentTranslate < 45) {
-                isExpanded = true;
-                sheet.style.transform = 'translateY(10%)';
-            } else {
-                isExpanded = false;
-                sheet.style.transform = 'translateY(75%)';
-            }
-        });
+            if (currentTranslate < 45) { isExpanded = true; sheet.style.transform = 'translateY(10%)'; }
+            else { isExpanded = false; sheet.style.transform = 'translateY(75%)'; }
+        };
 
-        // --- GAME ENGINE ---
+        handle.addEventListener('mousedown', startDrag);
+        handle.addEventListener('touchstart', startDrag, {passive: true});
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag, {passive: false});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        // --- GAME LOGIC ---
         function setTab(t) {
             currentTab = t;
             document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(t)));
@@ -161,21 +169,20 @@
             document.getElementById('target-img').src = game.skin;
             
             const container = document.getElementById('main-content');
-            container.innerHTML = `<h3 style="margin-bottom:15px; text-transform:uppercase; letter-spacing:1px;">${currentTab}</h3>`;
+            container.innerHTML = `<h3 style="margin-bottom:15px; text-transform:uppercase;">${currentTab}</h3>`;
 
             if(currentTab === 'market') {
                 Object.keys(config.market).forEach(k => {
                     let item = config.market[k]; 
-                    let cost = Math.floor(item.b * Math.pow(1.4, game.up[k]));
+                    let cost = Math.floor(item.b * Math.pow(1.5, game.up[k]));
                     let locked = game.bal < cost;
                     container.innerHTML += `
                         <div class="item">
                             <div class="item-left">
                                 <div class="item-icon">${item.icon}</div>
-                                <div><b>${item.n}</b><br><small style="color:#94a3b8">+${item.i}/s (Lv ${game.up[k]})</small></div>
+                                <div><b>${item.n}</b><br><small style="color:#94a3b8">${item.isClick ? '+1 per tap' : '+'+item.i+'/s'} (Lv ${game.up[k]})</small></div>
                             </div>
-                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" 
-                                    onclick="${locked ? '' : `buy('${k}',${cost})`}">
+                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" onclick="${locked ? '' : `buy('${k}',${cost},${item.isClick})`}">
                                 ${locked ? '🔒 ' : ''}$${cost.toLocaleString()}
                             </button>
                         </div>`;
@@ -186,32 +193,35 @@
                     container.innerHTML += `
                         <div class="item">
                             <div class="item-left"><div class="item-icon">${s.icon}</div><div><b>${s.n}</b></div></div>
-                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" 
-                                    onclick="${locked ? '' : `buySkin('${s.img}',${s.c})`}">$${s.c.toLocaleString()}</button>
+                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" onclick="${locked ? '' : `buySkin('${s.img}',${s.c})`}">$${s.c.toLocaleString()}</button>
                         </div>`;
                 });
             } else {
                 container.innerHTML += `<div style="text-align:center; padding:30px; background:#1e293b; border-radius:20px; border: 1px solid #334155;">
                     <h1 style="font-size:60px; margin:0;">🎲</h1>
-                    <p style="color:#cbd5e1;">Risk 50% of your wallet. 50/50 Chance.</p>
+                    <p style="color:#cbd5e1;">Double or nothing? Bet 50% of your wallet.</p>
                     <button class="buy-btn btn-available" style="width:100%; height:60px; font-size:18px;" onclick="gamble()">BET $${Math.floor(game.bal * 0.5).toLocaleString()}</button>
                 </div>`;
             }
-            localStorage.setItem('pixel_v6', JSON.stringify(game));
+            localStorage.setItem('pixel_v7', JSON.stringify(game));
         }
 
         function doClick(e) {
+            e.preventDefault();
             if(game.nrg >= 1) { 
-                game.bal += (1 * game.mult); game.nrg--; 
-                showPop(e, (1 * game.mult)); 
+                game.bal += game.clickPower;
+                game.nrg--; 
+                showPop(e); 
                 tg.HapticFeedback.impactOccurred('light'); 
             } else { tg.HapticFeedback.notificationOccurred('warning'); }
             render();
         }
 
-        function buy(k, cost) {
+        function buy(k, cost, isClick) {
             if(game.bal >= cost) { 
-                game.bal -= cost; game.up[k]++; game.psv += config.market[k].i; 
+                game.bal -= cost; game.up[k]++;
+                if(isClick) game.clickPower += 1;
+                else game.psv += config.market[k].i; 
                 tg.HapticFeedback.notificationOccurred('success'); render(); 
             }
         }
@@ -220,19 +230,22 @@
 
         function gamble() {
             let bet = game.bal * 0.5; if(bet < 1) return;
-            if(Math.random() > 0.5) { game.bal += bet; tg.HapticFeedback.notificationOccurred('success'); alert("WINNER!"); }
-            else { game.bal -= bet; tg.HapticFeedback.notificationOccurred('error'); alert("BUST!"); }
+            if(Math.random() > 0.5) { game.bal += bet; tg.HapticFeedback.notificationOccurred('success'); alert("JACKPOT!"); }
+            else { game.bal -= bet; tg.HapticFeedback.notificationOccurred('error'); alert("BUSTED!"); }
             render();
         }
 
-        function showPop(e, g) {
-            const p = document.createElement('div'); p.className='pop'; p.innerText=`+$${g}`; p.style.left=e.pageX+'px'; p.style.top=e.pageY+'px';
+        function showPop(e) {
+            const p = document.createElement('div'); p.className='pop'; p.innerText=`+$${game.clickPower}`;
+            const x = e.touches ? e.touches[0].pageX : e.pageX;
+            const y = e.touches ? e.touches[0].pageY : e.pageY;
+            p.style.left = x + 'px'; p.style.top = y + 'px';
             document.body.appendChild(p); setTimeout(()=>p.remove(),600);
         }
 
         setInterval(() => { 
-            game.bal += (game.psv * game.mult / 10); 
-            if(game.nrg < 1000) game.nrg += 0.8; 
+            game.bal += (game.psv / 10); 
+            if(game.nrg < 1000) game.nrg += 1; 
             document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
             document.getElementById('nrg-t').innerText = `Energy: ${Math.floor(game.nrg)}/1000`;
             document.getElementById('nrg-f').style.width = (game.nrg / 10) + "%";
