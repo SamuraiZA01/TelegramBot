@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Squad Tug: Official Mini App</title>
+    <title>Pixel Empire</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --purple: #a855f7; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; touch-action: none; user-select: none; }
         
-        /* Layout Components */
         .header { padding: 15px 20px; background: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #334155; }
         .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
 
@@ -24,11 +23,11 @@
         #main-target:active { transform: scale(0.92); }
         #main-target img { width: 90px; height: 90px; object-fit: contain; pointer-events: none; }
 
-        .tab-bar { display: flex; background: #2d3748; margin: 5px 15px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; }
-        .tab { flex: 1; padding: 12px 5px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; }
-        .tab.active { background: var(--primary); color: white; border-radius: 10px; }
+        /* FIXED TAB STYLES */
+        .tab-bar { display: flex; background: #2d3748; margin: 5px 15px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; gap: 5px; padding: 5px; }
+        .tab { flex: 1; padding: 12px 0; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border-radius: 8px; transition: 0.2s; }
+        .tab.active { background: var(--primary) !important; color: white !important; }
 
-        /* Draggable Sheet */
         .market-sheet { 
             position: fixed; bottom: 0; left: 0; right: 0; 
             background: var(--card); border-radius: 30px 30px 0 0; 
@@ -41,12 +40,11 @@
         .bar { width: 50px; height: 5px; background: #475569; border-radius: 10px; }
         .content { padding: 0 20px 60px; overflow-y: auto; flex: 1; }
 
-        /* UI Elements */
         .item { background: #2d3748; padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #3e4b5e; }
         .item-icon { width: 45px; height: 45px; background: #1e293b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
         .buy-btn { border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; min-width: 90px; color: white; cursor: pointer; font-size: 12px; }
         .btn-available { background: var(--primary); box-shadow: 0 4px 0 #1d4ed8; }
-        .btn-locked { background: #475569; opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+        .btn-locked { background: #475569 !important; opacity: 0.5; filter: grayscale(1); cursor: not-allowed; box-shadow: none !important; }
         .btn-claim { background: var(--success); box-shadow: 0 4px 0 #059669; }
 
         .pop { position: absolute; color: var(--accent); font-weight: bold; animation: popUp 0.6s forwards; pointer-events: none; z-index: 200; font-size: 20px; }
@@ -56,7 +54,7 @@
 <body>
 
     <div class="header">
-        <div><div style="font-size: 10px; color: #94a3b8;">SQUAD TUG BALANCE</div><div class="stat-val">$<span id="bal">0</span></div></div>
+        <div><div style="font-size: 10px; color: #94a3b8;">PIXEL EMPIRE BAL</div><div class="stat-val">$<span id="bal">0</span></div></div>
         <div style="text-align: right;"><div style="font-size: 10px; color: #94a3b8;">PASSIVE</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
     </div>
 
@@ -71,10 +69,10 @@
     </div>
 
     <div class="tab-bar">
-        <button class="tab active" onclick="setTab('market')">Upgrades</button>
-        <button class="tab" onclick="setTab('tasks')">Tasks</button>
-        <button class="tab" onclick="setTab('skins')">Skins</button>
-        <button class="tab" onclick="setTab('gamble')">Gamble</button>
+        <button id="tab-market" class="tab active" onclick="setTab('market')">Upgrades</button>
+        <button id="tab-tasks" class="tab" onclick="setTab('tasks')">Tasks</button>
+        <button id="tab-skins" class="tab" onclick="setTab('skins')">Skins</button>
+        <button id="tab-gamble" class="tab" onclick="setTab('gamble')">Gamble</button>
     </div>
 
     <div class="market-sheet" id="sheet">
@@ -87,8 +85,7 @@
         let currentTab = 'market';
         let isExpanded = false;
 
-        // --- GAME STATE ---
-        let game = JSON.parse(localStorage.getItem('squad_tug_v1')) || {
+        let game = JSON.parse(localStorage.getItem('pixel_empire_final')) || {
             bal: 10000, 
             psv: 0, nrg: 1000, mult: 1, clickPower: 1, 
             skin: 'https://img.icons8.com/fluency/240/rocket.png',
@@ -113,7 +110,6 @@
             }
         };
 
-        // --- UNIVERSAL DRAG LOGIC (Fixed) ---
         const sheet = document.getElementById('sheet');
         const handle = document.getElementById('drag-handle');
         let startY = 0, isDragging = false, currentTranslate = 75;
@@ -141,14 +137,12 @@
         window.addEventListener('mousemove', onDrag);
         window.addEventListener('mouseup', endDrag);
 
-        // --- ACTIONS ---
         function checkDaily() {
             const now = Date.now();
-            const oneDay = 24 * 60 * 60 * 1000;
-            if (now - game.lastDaily > oneDay) {
+            if (now - game.lastDaily > 86400000) {
                 game.bal += 5000;
                 game.lastDaily = now;
-                tg.showPopup({ title: 'Daily Bonus!', message: 'You claimed your $5,000 daily reward!' });
+                tg.showPopup({ title: 'Success!', message: 'Claimed $5,000!' });
                 render();
             }
         }
@@ -156,19 +150,22 @@
         function doTask(type) {
             if (game.tasks[type]) return;
             if (type === 'invite') {
-                const inviteLink = `https://t.me/SquadTugBot?start=ref`;
-                const text = encodeURIComponent(`🚀 Build your empire with me in Squad Tug! Get $10k bonus!`);
-                tg.openTelegramLink(`https://t.me/share/url?url=${inviteLink}&text=${text}`);
+                tg.openTelegramLink(`https://t.me/SquadTugBot?start=ref`);
                 game.tasks.invite = true; game.hasReferralSkin = true;
                 game.skin = 'https://img.icons8.com/fluency/240/dragon.png';
             } else {
-                tg.openLink(type === 'follow' ? 'https://twitter.com' : 'https://t.me/SquadTugBot');
+                tg.openLink('https://t.me/SquadTugBot');
                 game.bal += 5000; game.tasks[type] = true;
             }
             render();
         }
 
-        function setTab(t) { currentTab = t; render(); }
+        function setTab(t) { 
+            currentTab = t; 
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + t).classList.add('active');
+            render(); 
+        }
 
         function render() {
             document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
@@ -183,9 +180,10 @@
                     container.innerHTML += `<div class="item"><div class="item-left"><div class="item-icon">${item.icon}</div><div><b>${item.n}</b><br><small>${item.isClick?'+1 tap':'+'+item.i+'/s'}</small></div></div><button class="buy-btn ${locked?'btn-locked':'btn-available'}" onclick="${locked?'':`buy('${k}',${cost},${item.isClick})`}">$${cost.toLocaleString()}</button></div>`;
                 });
             } else if(currentTab === 'tasks') {
+                const canClaim = (Date.now() - game.lastDaily > 86400000);
                 container.innerHTML += `
-                    <div class="item"><div class="item-left"><div class="item-icon">📢</div><div><b>Daily Bonus</b><br><small>+$5,000</small></div></div><button class="buy-btn btn-claim" onclick="checkDaily()">CLAIM</button></div>
-                    <div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Invite Friend</b><br><small>DRAGON SKIN</small></div></div><button class="buy-btn ${game.tasks.invite?'btn-locked':'btn-claim'}" onclick="doTask('invite')">INVITE</button></div>
+                    <div class="item"><div class="item-left"><div class="item-icon">🎁</div><div><b>Daily Reward</b><br><small>+$5,000</small></div></div><button class="buy-btn ${canClaim?'btn-claim':'btn-locked'}" onclick="${canClaim?'checkDaily()':''}"> ${canClaim?'CLAIM':'WAIT'}</button></div>
+                    <div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Invite Friend</b><br><small>DRAGON SKIN</small></div></div><button class="buy-btn ${game.tasks.invite?'btn-locked':'btn-claim'}" onclick="doTask('invite')">${game.tasks.invite?'DONE':'INVITE'}</button></div>
                 `;
             } else if(currentTab === 'skins') {
                 if(game.hasReferralSkin) container.innerHTML += `<div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Dragon</b></div></div><button class="buy-btn btn-available" onclick="game.skin='https://img.icons8.com/fluency/240/dragon.png';render()">EQUIP</button></div>`;
@@ -196,7 +194,7 @@
             } else {
                 container.innerHTML += `<div style="text-align:center; padding:20px; background:#1e293b; border-radius:20px;"><h1>🎲</h1><button class="buy-btn btn-available" style="width:100%;" onclick="gamble()">BET 50%</button></div>`;
             }
-            localStorage.setItem('squad_tug_v1', JSON.stringify(game));
+            localStorage.setItem('pixel_empire_final', JSON.stringify(game));
         }
 
         function doClick(e) {
@@ -205,12 +203,8 @@
             render();
         }
 
-        function buy(k, cost, isClick) {
-            if(game.bal >= cost) { game.bal -= cost; game.up[k]++; if(isClick) game.clickPower++; else game.psv += config.market[k].i; render(); }
-        }
-
+        function buy(k, cost, isClick) { if(game.bal >= cost) { game.bal -= cost; game.up[k]++; if(isClick) game.clickPower++; else game.psv += config.market[k].i; render(); } }
         function buySkin(img, cost) { if(game.bal >= cost) { game.bal -= cost; game.skin = img; render(); } }
-
         function gamble() {
             let bet = game.bal * 0.5; if(bet < 1) return;
             if(Math.random() > 0.5) { game.bal += bet; tg.HapticFeedback.notificationOccurred('success'); }
@@ -232,11 +226,7 @@
             document.getElementById('nrg-f').style.width = (game.nrg / 10) + "%";
         }, 100);
 
-        if(game.isNewPlayer) {
-            tg.showPopup({ title: 'Welcome to Squad Tug!', message: 'You received a $10,000 Starting Bonus!' });
-            game.isNewPlayer = false;
-        }
-
+        if(game.isNewPlayer) { tg.showPopup({ title: 'Pixel Empire', message: 'Welcome! $10,000 added.' }); game.isNewPlayer = false; }
         render();
     </script>
 </body>
