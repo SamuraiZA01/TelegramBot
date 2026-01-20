@@ -2,184 +2,303 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SQUAD EMPIRE 2026</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 15px; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Stats Header */
-        .header { display: flex; justify-content: space-between; background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--accent); }
-        .stat-box b { display: block; font-size: 12px; color: #888; text-transform: uppercase; }
-        .stat-box span { font-size: 20px; font-weight: bold; color: var(--gold); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            overflow: hidden; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-        /* Energy Bar */
-        .energy-container { width: 100%; height: 12px; background: #333; border-radius: 10px; margin: 15px 0; overflow: hidden; }
-        #energy-fill { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); width: 100%; transition: width 0.3s; }
+        /* Top HUD */
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            background: var(--card); 
+            padding: 15px; 
+            border-radius: 15px; 
+            border-bottom: 3px solid var(--accent);
+            z-index: 10;
+        }
+        .stat-box b { display: block; font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-box span { font-size: 22px; font-weight: 800; color: var(--gold); }
 
-        /* Main Game Area */
-        .game-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        #tap-target { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, #2563eb 0%, #1e40af 100%); border: 10px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 80px; cursor: pointer; transition: transform 0.05s; box-shadow: 0 0 50px rgba(37, 99, 235, 0.3); }
+        /* Energy System */
+        .energy-section { margin: 15px 0; text-align: center; }
+        .energy-bar { width: 100%; height: 10px; background: #222; border-radius: 10px; overflow: hidden; margin-bottom: 5px; }
+        #energy-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 100%; transition: width 0.1s; }
+        .energy-text { font-size: 12px; font-weight: bold; color: #aaa; }
+
+        /* Main Game Circle */
+        .game-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 240px; }
+        #tap-target { 
+            width: 220px; height: 220px; border-radius: 50%; 
+            background: radial-gradient(circle, #2563eb 0%, #1e40af 100%); 
+            border: 8px solid #1d4ed8; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 80px; cursor: pointer; transition: transform 0.05s;
+            box-shadow: 0 0 40px rgba(37, 99, 235, 0.2);
+        }
         #tap-target:active { transform: scale(0.92); }
 
-        /* Bottom Menu / Shop */
-        .menu-tabs { display: flex; gap: 10px; margin-top: 10px; }
-        .tab-btn { flex: 1; padding: 10px; background: var(--card); border: none; color: white; border-radius: 10px; font-weight: bold; }
-        .tab-btn.active { background: var(--accent); }
+        /* Draggable Marketplace */
+        .shop-container {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--card);
+            border-radius: 25px 25px 0 0;
+            height: 220px; /* Mini State */
+            transition: height 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.6);
+        }
+        
+        .drag-handle {
+            width: 100%; height: 40px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: grab; touch-action: none;
+        }
+        .drag-handle::after {
+            content: ''; width: 40px; height: 4px; background: #4b5563; border-radius: 10px;
+        }
 
-        .shop-container { flex-shrink: 0; height: 200px; overflow-y: auto; background: var(--card); border-radius: 20px 20px 0 0; padding: 15px; margin: 0 -15px -15px -15px; }
-        .upgrade-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #2d3440; border-radius: 12px; margin-bottom: 8px; border: 1px solid #3f4756; }
-        .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
-        .buy-btn:disabled { background: #4b5563; opacity: 0.5; }
+        .shop-content { flex-grow: 1; overflow-y: auto; padding: 0 20px 30px 20px; }
+        .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        
+        /* Upgrade Items */
+        .upgrade-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px; background: #242b38; border-radius: 15px; 
+            margin-bottom: 10px; border: 1px solid #333;
+        }
+        .item-meta b { display: block; font-size: 16px; margin-bottom: 2px; }
+        .item-meta small { color: var(--accent); font-weight: bold; }
+        .buy-btn { 
+            background: var(--accent); border: none; color: white; 
+            padding: 10px 15px; border-radius: 10px; font-weight: 800; 
+        }
+        .buy-btn:disabled { background: #334155; opacity: 0.5; color: #94a3b8; }
 
-        /* Prestige Button */
-        .prestige-btn { position: absolute; top: 10px; right: 10px; background: #7c3aed; color: white; padding: 5px 10px; border-radius: 5px; font-size: 10px; font-weight: bold; }
+        .prestige-btn { background: #7c3aed; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="stat-box"><b>Balance</b>$<span id="balance">0</span></div>
-        <div class="stat-box" style="text-align: right;"><b>Passive</b>+$<span id="income">0</span>/s</div>
+        <div class="stat-box"><b>Cash Balance</b>$<span id="balance">0</span></div>
+        <div class="stat-box" style="text-align: right;"><b>Earnings/Sec</b>+$<span id="income">0</span></div>
     </div>
 
-    <div class="energy-container"><div id="energy-fill"></div></div>
-    <div style="font-size: 12px; text-align: center; margin-top: -10px;">Energy: <span id="energy-text">1000</span>/1000</div>
+    <div class="energy-section">
+        <div class="energy-bar"><div id="energy-fill"></div></div>
+        <div class="energy-text">⚡ <span id="energy-num">1000</span> / 1000</div>
+    </div>
 
     <div class="game-area">
-        <button class="prestige-btn" onclick="prestige()">PRESTIGE (x<span id="mult">1</span>)</button>
         <div id="tap-target">🚀</div>
     </div>
 
-    <div class="shop-container" id="shop">
-        <h4 style="margin: 0 0 10px 0;">Marketplace</h4>
+    <div class="shop-container" id="shop-panel">
+        <div class="drag-handle" id="drag-zone"></div>
+        <div class="shop-content">
+            <div class="shop-header">
+                <h2 style="margin:0;">Marketplace</h2>
+                <button class="prestige-btn" onclick="prestige()">PRESTIGE (x<span id="mult">1</span>)</button>
+            </div>
+            <div id="item-list">
+                </div>
         </div>
+    </div>
 
     <script>
-    let tg = window.Telegram.WebApp;
-    tg.expand();
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
 
-    let game = {
-        balance: parseFloat(localStorage.getItem('b')) || 0,
-        income: parseFloat(localStorage.getItem('i')) || 0,
-        energy: parseFloat(localStorage.getItem('e')) || 1000,
-        multiplier: parseFloat(localStorage.getItem('m')) || 1,
-        lastSave: parseInt(localStorage.getItem('t')) || Date.now(),
-        lastDaily: parseInt(localStorage.getItem('ld')) || 0,
-        upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0 }
-    };
+        // --- GAME STATE ---
+        let game = {
+            balance: parseFloat(localStorage.getItem('b')) || 0,
+            income: parseFloat(localStorage.getItem('i')) || 0,
+            energy: parseFloat(localStorage.getItem('e')) || 1000,
+            multiplier: parseFloat(localStorage.getItem('m')) || 1,
+            lastSave: parseInt(localStorage.getItem('t')) || Date.now(),
+            lastDaily: localStorage.getItem('ld') || '',
+            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0, rocket: 0 }
+        };
 
-    const ITEMS = [
-        { id: 'dev', name: 'Hire Intern', baseCost: 50, power: 1, icon: '👨‍💻' },
-        { id: 'office', name: 'Open Office', baseCost: 500, power: 15, icon: '🏢' },
-        { id: 'ai', name: 'AI Supercomputer', baseCost: 10000, power: 200, icon: '🤖' }
-    ];
+        const ITEMS = [
+            { id: 'dev', name: 'Junior Intern', cost: 50, power: 1, icon: '👨‍💻' },
+            { id: 'office', name: 'Small Office', cost: 500, power: 12, icon: '🏢' },
+            { id: 'ai', name: 'Neural Network', cost: 10000, power: 180, icon: '🤖' },
+            { id: 'rocket', name: 'Space Hub', cost: 250000, power: 2500, icon: '🚀' }
+        ];
 
-    function init() {
-        // 1. Daily Reward Check
-        const today = new Date().toDateString();
-        if (game.lastDaily !== today) {
-            game.balance += 100; // Gift for starting/returning
-            game.lastDaily = today;
-            tg.showAlert("🌞 Daily Reward: +$100 added to your balance!");
+        // --- INITIALIZATION ---
+        function init() {
+            // Daily Reward
+            const today = new Date().toDateString();
+            if (game.lastDaily !== today) {
+                game.balance += 100;
+                game.lastDaily = today;
+                tg.showAlert("🌞 Daily Bonus! +$100 credited.");
+            }
+
+            // Offline Earnings
+            let elapsed = Math.floor((Date.now() - game.lastSave) / 1000);
+            if (elapsed > 30 && game.income > 0) {
+                let earned = Math.min(elapsed * game.income, game.income * 7200); // Max 2 hours
+                game.balance += earned;
+                tg.showAlert(`Welcome back!\nYour empire generated $${Math.floor(earned).toLocaleString()} while you were gone.`);
+            }
+
+            renderShop();
+            gameLoop();
         }
 
-        // 2. Offline Income
-        let now = Date.now();
-        let elapsed = Math.floor((now - game.lastSave) / 1000);
-        if (elapsed > 10 && game.income > 0) {
-            let earned = Math.min(elapsed * game.income, game.income * 3600 * 2); // Max 2 hours offline
-            game.balance += earned;
-            tg.showPopup({
-                title: 'Offline Profits',
-                message: `While you were gone, your team generated $${Math.floor(earned).toLocaleString()}!`,
-                buttons: [{type: 'ok'}]
+        // --- MAIN LOOP ---
+        function gameLoop() {
+            game.balance += (game.income / 10);
+            if (game.energy < 1000) game.energy += 0.8;
+            
+            updateUI();
+            save();
+            setTimeout(gameLoop, 100);
+        }
+
+        // --- ACTIONS ---
+        document.getElementById('tap-target').onclick = (e) => {
+            if (game.energy >= 1) {
+                let gain = 1 * game.multiplier;
+                game.balance += gain;
+                game.energy -= 1;
+                spawnFloat(e.clientX, e.clientY, `+$${gain}`);
+                tg.HapticFeedback.impactOccurred('light');
+            } else {
+                tg.HapticFeedback.notificationOccurred('error');
+            }
+        };
+
+        function buyUpgrade(idx) {
+            let item = ITEMS[idx];
+            let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+            
+            if (game.balance >= cost) {
+                game.balance -= cost;
+                game.income += item.power * game.multiplier;
+                game.upgrades[item.id]++;
+                renderShop();
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function prestige() {
+            if (game.balance < 100000) {
+                tg.showAlert("Earn $100,000 to Prestige!");
+                return;
+            }
+            tg.showConfirm("Reset everything for a permanent 2x speed boost?", (ok) => {
+                if (ok) {
+                    game.balance = 0; game.income = 0;
+                    game.upgrades = { dev:0, office:0, ai:0, rocket:0 };
+                    game.multiplier *= 2;
+                    renderShop();
+                }
             });
         }
-        renderShop();
-        tick();
-    }
 
-    function tick() {
-        game.balance += (game.income / 10);
-        if (game.energy < 1000) game.energy += 0.8; 
-        updateUI();
-        save();
-        setTimeout(tick, 100);
-    }
+        // --- DRAG LOGIC ---
+        let panel = document.getElementById('shop-panel');
+        let dragZone = document.getElementById('drag-zone');
+        let isDragging = false, startY, startH;
 
-    document.getElementById('tap-target').onclick = (e) => {
-        if (game.energy >= 1) {
-            let gain = 1 * game.multiplier;
-            game.balance += gain;
-            game.energy -= 1;
-            spawnFloat(e.clientX, e.clientY, `+$${gain}`);
-            tg.HapticFeedback.impactOccurred('light');
+        dragZone.ontouchstart = (e) => {
+            isDragging = true;
+            startY = e.touches[0].clientY;
+            startH = panel.offsetHeight;
+            panel.style.transition = 'none';
+        };
+
+        document.ontouchmove = (e) => {
+            if (!isDragging) return;
+            let h = startH + (startY - e.touches[0].clientY);
+            if (h > 200 && h < window.innerHeight * 0.9) panel.style.height = h + 'px';
+        };
+
+        document.ontouchend = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'height 0.4s cubic-bezier(0.17, 0.84, 0.44, 1)';
+            if (panel.offsetHeight > window.innerHeight * 0.4) {
+                panel.style.height = '85%';
+            } else {
+                panel.style.height = '220px';
+            }
+        };
+
+        // --- UI REFRESH ---
+        function updateUI() {
+            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
+            document.getElementById('income').innerText = game.income.toLocaleString();
+            document.getElementById('energy-fill').style.width = (game.energy / 10) + "%";
+            document.getElementById('energy-num').innerText = Math.floor(game.energy);
+            document.getElementById('mult').innerText = game.multiplier;
+
+            document.querySelectorAll('.buy-btn').forEach((btn, idx) => {
+                let cost = Math.floor(ITEMS[idx].cost * Math.pow(1.15, game.upgrades[ITEMS[idx].id]));
+                btn.disabled = (game.balance < cost);
+            });
         }
-    };
 
-    function buyUpgrade(idx) {
-        let item = ITEMS[idx];
-        let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
-        
-        if (game.balance >= cost) {
-            game.balance -= cost;
-            game.income += item.power * game.multiplier;
-            game.upgrades[item.id]++;
-            renderShop();
-            tg.HapticFeedback.notificationOccurred('success');
-        }
-    }
-
-    function updateUI() {
-        document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
-        document.getElementById('income').innerText = game.income.toLocaleString();
-        document.getElementById('energy-fill').style.width = (game.energy / 10) + "%";
-        document.getElementById('energy-text').innerText = Math.floor(game.energy);
-        document.getElementById('mult').innerText = game.multiplier;
-
-        // Visual feedback for shop: enable/disable buttons
-        ITEMS.forEach((item, idx) => {
-            let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
-            let btn = document.querySelectorAll('.buy-btn')[idx];
-            if (btn) btn.disabled = (game.balance < cost);
-        });
-    }
-
-    function renderShop() {
-        let html = '';
-        ITEMS.forEach((item, idx) => {
-            let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
-            html += `
+        function renderShop() {
+            let html = '';
+            ITEMS.forEach((item, idx) => {
+                let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+                html += `
                 <div class="upgrade-item">
-                    <div><b>${item.icon} ${item.name}</b><small>Lv ${game.upgrades[item.id]}</small></div>
+                    <div class="item-meta">
+                        <b>${item.icon} ${item.name}</b>
+                        <small>Level ${game.upgrades[item.id]} (+$${item.power}/s)</small>
+                    </div>
                     <button class="buy-btn" onclick="buyUpgrade(${idx})">$${cost.toLocaleString()}</button>
                 </div>`;
-        });
-        document.getElementById('shop').innerHTML = '<h4 style="margin: 0 0 10px 0;">Marketplace</h4>' + html;
-    }
+            });
+            document.getElementById('item-list').innerHTML = html;
+        }
 
-    function spawnFloat(x, y, txt) {
-        let el = document.createElement('div');
-        el.innerText = txt;
-        el.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:#f59e0b; font-weight:bold; pointer-events:none; z-index:100; font-size: 24px;`;
-        document.body.appendChild(el);
-        el.animate([{transform:'translateY(0)', opacity:1}, {transform:'translateY(-120px)', opacity:0}], 700);
-        setTimeout(() => el.remove(), 700);
-    }
+        function spawnFloat(x, y, txt) {
+            let el = document.createElement('div');
+            el.innerText = txt;
+            el.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:var(--gold); font-weight:800; font-size:24px; pointer-events:none; z-index:1000;`;
+            document.body.appendChild(el);
+            el.animate([{transform:'translateY(0) scale(1)', opacity:1}, {transform:'translateY(-150px) scale(1.5)', opacity:0}], 800);
+            setTimeout(() => el.remove(), 800);
+        }
 
-    function save() {
-        localStorage.setItem('b', game.balance);
-        localStorage.setItem('i', game.income);
-        localStorage.setItem('e', game.energy);
-        localStorage.setItem('m', game.multiplier);
-        localStorage.setItem('t', Date.now());
-        localStorage.setItem('ld', game.lastDaily);
-        localStorage.setItem('u', JSON.stringify(game.upgrades));
-    }
+        function save() {
+            localStorage.setItem('b', game.balance);
+            localStorage.setItem('i', game.income);
+            localStorage.setItem('e', game.energy);
+            localStorage.setItem('m', game.multiplier);
+            localStorage.setItem('ld', game.lastDaily);
+            localStorage.setItem('t', Date.now());
+            localStorage.setItem('u', JSON.stringify(game.upgrades));
+        }
 
-    init();
-</script>
+        init();
+    </script>
 </body>
 </html>
