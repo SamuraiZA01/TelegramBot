@@ -3,139 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Squad-based Clicker</title>
+    <title>Empire Pro: Vegas</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --primary: #0088cc; --bg: #0f172a; --card: #1e293b; --accent: #f59e0b; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 15px; user-select: none; }
-        
-        .header-box { background: var(--card); padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; border: 1px solid #334155; }
-        .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
-        .stat-value { font-size: 22px; color: var(--accent); font-weight: bold; }
+        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --prestige: #a855f7; --danger: #ef4444; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        .header { padding: 15px 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
+        .prestige-badge { background: var(--prestige); font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
 
-        .energy-container { margin: 15px 0; }
-        .energy-bar { background: #334155; height: 10px; border-radius: 5px; overflow: hidden; }
-        #energy-fill { background: #10b981; width: 100%; height: 100%; transition: width 0.3s; }
+        /* Game Screen */
+        .click-area { height: 45vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #main-target { width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, #3b82f6, #1e3a8a); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(59, 130, 246, 0.4); cursor: pointer; transition: transform 0.05s; }
+        #main-target:active { transform: scale(0.9); }
+        #main-target img { width: 100px; height: 100px; object-fit: contain; }
 
-        #rocket-container { margin: 40px auto; width: 220px; height: 220px; position: relative; cursor: pointer; }
-        #rocket-circle { 
-            width: 100%; height: 100%; border-radius: 50%; 
-            background: radial-gradient(circle, #2563eb, #1e3a8a);
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 30px rgba(37, 99, 235, 0.4);
-        }
-        #rocket-img { width: 100px; transition: transform 0.1s; }
-        #rocket-container:active #rocket-img { transform: scale(0.9) rotate(-5deg); }
+        /* Tabs */
+        .tab-bar { display: flex; background: #2d3748; margin: 10px 20px; border-radius: 12px; overflow: hidden; }
+        .tab { flex: 1; padding: 10px; border: none; background: none; color: #94a3b8; font-weight: bold; cursor: pointer; }
+        .tab.active { background: var(--primary); color: white; }
 
-        .marketplace { background: var(--card); border-radius: 20px 20px 0 0; padding: 20px; position: fixed; bottom: 0; left: 0; right: 0; height: 35vh; overflow-y: auto; }
-        .market-item { 
-            background: #2d3748; padding: 12px; border-radius: 12px; 
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
-        }
-        .buy-btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; }
-        .buy-btn:disabled { background: #4a5568; color: #a0aec0; }
+        /* Market Sheet */
+        .market-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-radius: 25px 25px 0 0; height: 65vh; transform: translateY(85%); transition: transform 0.3s ease; z-index: 100; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        .market-sheet.open { transform: translateY(0); }
+        .handle { height: 35px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .bar { width: 40px; height: 4px; background: #475569; border-radius: 2px; }
+        .content { padding: 0 20px 20px; overflow-y: auto; height: calc(100% - 40px); }
+
+        .item { background: #2d3748; padding: 12px; border-radius: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #3e4b5e; }
+        .buy-btn { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 10px; font-weight: bold; }
+        .gamble-btn { background: var(--danger); width: 100%; padding: 15px; border-radius: 15px; border: none; color: white; font-weight: bold; margin-top: 10px; }
+        .pop { position: absolute; color: var(--accent); font-weight: bold; animation: popUp 0.6s forwards; pointer-events: none; }
+        @keyframes popUp { to { transform: translateY(-80px); opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div class="header-box">
-        <div><div class="stat-label">Balance</div><div class="stat-value">$<span id="balance">0</span></div></div>
-        <div style="text-align:right;"><div class="stat-label">Passive</div><div class="stat-value">+$<span id="passive">0</span>/s</div></div>
+    <div class="header">
+        <div><div style="font-size: 10px; color: #94a3b8;">BALANCE</div><div class="stat-val">$<span id="bal">0</span></div></div>
+        <div style="text-align: right;"><div id="mult" class="prestige-badge">x1 Multiplier</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
     </div>
 
-    <div class="energy-container">
-        <div id="energy-text" style="font-size:12px; margin-bottom:5px;">Energy: 1000/1000</div>
-        <div class="energy-bar"><div id="energy-fill"></div></div>
-    </div>
-
-    <div id="rocket-container">
-        <div id="rocket-circle">
-            <img id="rocket-img" src="https://img.icons8.com/fluency/240/rocket.png" alt="Rocket">
+    <div class="click-area">
+        <div id="main-target" onclick="doClick(event)"><img id="target-img" src="https://img.icons8.com/fluency/240/rocket.png"></div>
+        <div style="margin-top:20px; width:80%;">
+            <div id="nrg-t" style="font-size:12px; margin-bottom:5px;">Energy: 1000/1000</div>
+            <div style="background:#334155; height:6px; border-radius:3px; overflow:hidden;"><div id="nrg-f" style="background:var(--success); width:100%; height:100%;"></div></div>
         </div>
     </div>
 
-    <div class="marketplace">
-        <h3 style="margin-top:0;">Marketplace</h3>
-        <div class="market-item">
-            <div><strong>Hire Intern</strong><br><small id="intern-lv">Lv 0</small></div>
-            <button class="buy-btn" id="buy-intern">Cost: $50</button>
-        </div>
-        <div class="market-item">
-            <div><strong>Open Office</strong><br><small id="office-lv">Lv 0</small></div>
-            <button class="buy-btn" id="buy-office">Cost: $500</button>
-        </div>
+    <div class="tab-bar">
+        <button class="tab active" onclick="setTab('market')">Upgrades</button>
+        <button class="tab" onclick="setTab('skins')">Skins</button>
+        <button class="tab" onclick="setTab('gamble')">Gamble</button>
+    </div>
+
+    <div class="market-sheet" id="sheet">
+        <div class="handle" onclick="document.getElementById('sheet').classList.toggle('open')"><div class="bar"></div></div>
+        <div class="content" id="main-content"></div>
     </div>
 
     <script>
-        // Game State
-        let data = JSON.parse(localStorage.getItem('gameData')) || {
-            balance: 0,
-            passive: 0,
-            energy: 1000,
-            maxEnergy: 1000,
-            interns: 0,
-            offices: 0
+        const tg = window.Telegram.WebApp; tg.expand();
+        let currentTab = 'market';
+        let game = JSON.parse(localStorage.getItem('pixel_v3')) || {
+            bal: 0, psv: 0, nrg: 1000, mult: 1, skin: 'https://img.icons8.com/fluency/240/rocket.png',
+            up: { intern: 0, office: 0, manager: 0 }
         };
 
-        const updateUI = () => {
-            document.getElementById('balance').innerText = Math.floor(data.balance).toLocaleString();
-            document.getElementById('passive').innerText = data.passive;
-            document.getElementById('energy-text').innerText = `Energy: ${Math.floor(data.energy)}/${data.maxEnergy}`;
-            document.getElementById('energy-fill').style.width = (data.energy / data.maxEnergy * 100) + "%";
-            
-            document.getElementById('intern-lv').innerText = `Lv ${data.interns} (+$${data.interns * 2}/s)`;
-            document.getElementById('office-lv').innerText = `Lv ${data.offices} (+$${data.offices * 15}/s)`;
-            
-            document.getElementById('buy-intern').innerText = `Cost: $${50 + (data.interns * 25)}`;
-            document.getElementById('buy-office').innerText = `Cost: $${500 + (data.offices * 200)}`;
-            
-            document.getElementById('buy-intern').disabled = data.balance < (50 + (data.interns * 25));
-            document.getElementById('buy-office').disabled = data.balance < (500 + (data.offices * 200));
-            
-            localStorage.setItem('gameData', JSON.stringify(data));
+        const config = {
+            market: { intern: { n: "Intern", b: 50, i: 1 }, office: { n: "Office", b: 500, i: 10 }, manager: { n: "Manager", b: 2500, i: 60 } },
+            skins: { supercar: { n: "Supercar", c: 5000, img: "https://img.icons8.com/fluency/240/sport-car.png" }, coin: { n: "Gold Coin", c: 25000, img: "https://img.icons8.com/fluency/240/gold-bars.png" } }
         };
 
-        // Clicking
-        document.getElementById('rocket-container').addEventListener('click', () => {
-            if (data.energy >= 1) {
-                data.balance += 1;
-                data.energy -= 1;
-                updateUI();
+        function setTab(t) {
+            currentTab = t;
+            document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(t)));
+            render();
+        }
+
+        function render() {
+            document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
+            document.getElementById('psv').innerText = (game.psv * game.mult).toLocaleString();
+            document.getElementById('mult').innerText = `x${game.mult} Multiplier`;
+            document.getElementById('target-img').src = game.skin;
+            const container = document.getElementById('main-content');
+            container.innerHTML = `<h2>${currentTab.toUpperCase()}</h2>`;
+
+            if(currentTab === 'market') {
+                Object.keys(config.market).forEach(k => {
+                    let item = config.market[k]; let cost = Math.floor(item.b * Math.pow(1.3, game.up[k]));
+                    container.innerHTML += `<div class="item"><div><b>${item.n}</b> (Lv ${game.up[k]})</div><button class="buy-btn" onclick="buy('${k}',${cost})">$${cost}</button></div>`;
+                });
+            } else if(currentTab === 'skins') {
+                Object.keys(config.skins).forEach(k => {
+                    let s = config.skins[k];
+                    container.innerHTML += `<div class="item"><div><b>${s.n}</b></div><button class="buy-btn" onclick="buySkin('${s.img}',${s.c})">$${s.c}</button></div>`;
+                });
+            } else {
+                container.innerHTML += `<p>Double your balance or lose it all! (50/50 Chance)</p><button class="gamble-btn" onclick="gamble()">BET 50% OF BALANCE</button>`;
             }
-        });
+            localStorage.setItem('pixel_v3', JSON.stringify(game));
+        }
 
-        // Market Logic
-        document.getElementById('buy-intern').addEventListener('click', () => {
-            let cost = 50 + (data.interns * 25);
-            if (data.balance >= cost) {
-                data.balance -= cost;
-                data.interns++;
-                data.passive += 2;
-                updateUI();
-            }
-        });
+        function doClick(e) {
+            if(game.nrg >= 1) { game.bal += (1 * game.mult); game.nrg--; showPop(e, (1 * game.mult)); tg.HapticFeedback.impactOccurred('light'); render(); }
+        }
 
-        document.getElementById('buy-office').addEventListener('click', () => {
-            let cost = 500 + (data.offices * 200);
-            if (data.balance >= cost) {
-                data.balance -= cost;
-                data.offices++;
-                data.passive += 15;
-                updateUI();
-            }
-        });
+        function buy(k, cost) { if(game.bal >= cost) { game.bal -= cost; game.up[k]++; game.psv += config.market[k].i; tg.HapticFeedback.notificationOccurred('success'); render(); } }
+        function buySkin(img, cost) { if(game.bal >= cost) { game.bal -= cost; game.skin = img; render(); } }
+        function gamble() {
+            let bet = game.bal * 0.5;
+            if(Math.random() > 0.5) { game.bal += bet; alert("WINNER! +$" + Math.floor(bet)); }
+            else { game.bal -= bet; alert("BUSTED! -$" + Math.floor(bet)); }
+            render();
+        }
 
-        // Loops
-        setInterval(() => {
-            // Passive Income
-            data.balance += (data.passive / 10);
-            // Energy Regen
-            if (data.energy < data.maxEnergy) data.energy += 0.5;
-            updateUI();
-        }, 100);
+        function showPop(e, g) {
+            const p = document.createElement('div'); p.className='pop'; p.innerText=`+$${g}`; p.style.left=e.pageX+'px'; p.style.top=e.pageY+'px';
+            document.body.appendChild(p); setTimeout(()=>p.remove(),600);
+        }
 
-        updateUI();
-        window.Telegram.WebApp.expand();
+        setInterval(() => { game.bal += (game.psv * game.mult / 10); if(game.nrg < 1000) game.nrg += 0.5; render(); }, 100);
+        render();
     </script>
 </body>
 </html>
