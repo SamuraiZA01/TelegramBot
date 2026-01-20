@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Empire Master: Social Pro</title>
+    <title>Empire Master: Viral Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --locked: #475569; --danger: #ef4444; --purple: #a855f7; }
+        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --purple: #a855f7; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; touch-action: none; user-select: none; }
         
-        /* Dashboard */
         .header { padding: 15px 20px; background: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #334155; }
         .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
 
-        /* Game Area */
         .click-area { height: 38vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         #main-target { 
             width: 160px; height: 160px; border-radius: 50%; 
@@ -25,32 +23,25 @@
         #main-target:active { transform: scale(0.92); }
         #main-target img { width: 90px; height: 90px; object-fit: contain; pointer-events: none; }
 
-        /* Navigation Tabs */
         .tab-bar { display: flex; background: #2d3748; margin: 5px 15px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; }
         .tab { flex: 1; padding: 12px 5px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; }
         .tab.active { background: var(--primary); color: white; border-radius: 10px; }
 
-        /* DRAGGABLE MARKET SHEET */
         .market-sheet { 
             position: fixed; bottom: 0; left: 0; right: 0; 
             background: var(--card); border-radius: 30px 30px 0 0; 
             height: 85vh; transform: translateY(75%);
             z-index: 100; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); 
             display: flex; flex-direction: column;
-            will-change: transform;
-            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .handle { height: 45px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: ns-resize; touch-action: none; }
+        .handle { height: 45px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: ns-resize; }
         .bar { width: 50px; height: 5px; background: #475569; border-radius: 10px; }
-        
-        .content { padding: 0 20px 60px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+        .content { padding: 0 20px 60px; overflow-y: auto; flex: 1; }
 
-        /* List Items */
         .item { background: #2d3748; padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #3e4b5e; }
-        .item-left { display: flex; align-items: center; gap: 12px; }
         .item-icon { width: 45px; height: 45px; background: #1e293b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-        
-        .buy-btn { border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; min-width: 90px; color: white; transition: 0.2s; cursor: pointer; font-size: 12px; }
+        .buy-btn { border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; min-width: 90px; color: white; cursor: pointer; font-size: 12px; }
         .btn-available { background: var(--primary); box-shadow: 0 4px 0 #1d4ed8; }
         .btn-locked { background: var(--locked); opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
         .btn-claim { background: var(--success); box-shadow: 0 4px 0 #059669; }
@@ -94,13 +85,20 @@
         let isExpanded = false;
 
         // --- GAME STATE ---
-        let game = JSON.parse(localStorage.getItem('pixel_v9')) || {
-            bal: 0, psv: 0, nrg: 1000, mult: 1, clickPower: 1, 
+        let game = JSON.parse(localStorage.getItem('pixel_v10')) || {
+            bal: 10000, // WELCOME BONUS FOR NEW PLAYERS
+            psv: 0, nrg: 1000, mult: 1, clickPower: 1, 
             skin: 'https://img.icons8.com/fluency/240/rocket.png',
             up: { intern: 0, office: 0, manager: 0, factory: 0, clicker: 0 },
             tasks: { follow: false, join: false, invite: false },
-            hasReferralSkin: false
+            hasReferralSkin: false,
+            isNewPlayer: true
         };
+
+        if(game.isNewPlayer) {
+            tg.showPopup({ title: 'Welcome!', message: 'You received a $10,000 New Player Bonus!' });
+            game.isNewPlayer = false;
+        }
 
         const config = {
             market: { 
@@ -112,12 +110,11 @@
             },
             skins: { 
                 car:   { n: "Supercar",  c: 10000,  img: "https://img.icons8.com/fluency/240/sport-car.png", icon: "🏎️" }, 
-                coin:  { n: "Gold Coin", c: 50000,  img: "https://img.icons8.com/fluency/240/gold-bars.png", icon: "🪙" },
-                crown: { n: "Royal Crown",c: 500000, img: "https://img.icons8.com/fluency/240/crown.png",     icon: "👑" }
+                coin:  { n: "Gold Coin", c: 50000,  img: "https://img.icons8.com/fluency/240/gold-bars.png", icon: "🪙" }
             }
         };
 
-        // --- UNIVERSAL DRAG LOGIC ---
+        // --- DRAG LOGIC ---
         const sheet = document.getElementById('sheet');
         const handle = document.getElementById('drag-handle');
         let startY = 0, isDragging = false, currentTranslate = 75;
@@ -126,8 +123,7 @@
         const startDrag = (e) => { startY = getY(e); isDragging = true; sheet.style.transition = 'none'; };
         const onDrag = (e) => {
             if (!isDragging) return;
-            const deltaY = ((getY(e) - startY) / window.innerHeight) * 100;
-            let next = (isExpanded ? 10 : 75) + deltaY;
+            let next = (isExpanded ? 10 : 75) + ((getY(e) - startY) / window.innerHeight) * 100;
             if (next < 5) next = 5; if (next > 85) next = 85;
             sheet.style.transform = `translateY(${next}%)`;
             currentTranslate = next;
@@ -139,45 +135,32 @@
             sheet.style.transform = isExpanded ? 'translateY(10%)' : 'translateY(75%)';
         };
 
-        handle.addEventListener('mousedown', startDrag);
-        handle.addEventListener('touchstart', startDrag, {passive: true});
-        window.addEventListener('mousemove', onDrag);
+        handle.addEventListener('touchstart', startDrag);
         window.addEventListener('touchmove', onDrag, {passive: false});
-        window.addEventListener('mouseup', endDrag);
         window.addEventListener('touchend', endDrag);
 
-        // --- SOCIAL & TASKS ---
+        // --- ACTIONS ---
         function doTask(type) {
             if (game.tasks[type]) return;
             if (type === 'invite') {
-                const url = `https://t.me/share/url?url=https://t.me/YOUR_BOT&text=Join%20my%20Empire!`;
-                tg.openTelegramLink(url);
-                game.tasks.invite = true;
-                game.hasReferralSkin = true;
+                tg.openTelegramLink(`https://t.me/share/url?url=https://t.me/YOUR_BOT&text=Get%20$10k%20Bonus!`);
+                game.tasks.invite = true; game.hasReferralSkin = true;
                 game.skin = 'https://img.icons8.com/fluency/240/dragon.png';
-                alert("EXCLUSIVE: Dragon Skin Unlocked!");
             } else {
-                tg.openLink(type === 'follow' ? 'https://twitter.com' : 'https://t.me');
-                game.bal += 5000;
-                game.tasks[type] = true;
-                tg.HapticFeedback.notificationOccurred('success');
+                tg.openLink(type === 'follow' ? 'https://twitter.com' : 'https://t.me/YOUR_CHANNEL');
+                game.bal += 5000; game.tasks[type] = true;
             }
             render();
         }
 
-        // --- GAME ENGINE ---
-        function setTab(t) {
-            currentTab = t;
-            document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(t)));
-            render();
-        }
+        function setTab(t) { currentTab = t; render(); }
 
         function render() {
             document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
-            document.getElementById('psv').innerText = (game.psv * game.mult).toLocaleString();
+            document.getElementById('psv').innerText = (game.psv).toLocaleString();
             document.getElementById('target-img').src = game.skin;
             const container = document.getElementById('main-content');
-            container.innerHTML = `<h3 style="margin-bottom:15px; text-transform:uppercase;">${currentTab}</h3>`;
+            container.innerHTML = `<h3 style="text-transform:uppercase;">${currentTab}</h3>`;
 
             if(currentTab === 'market') {
                 Object.keys(config.market).forEach(k => {
@@ -186,9 +169,8 @@
                 });
             } else if(currentTab === 'tasks') {
                 container.innerHTML += `
-                    <div class="item"><div class="item-left"><div class="item-icon">🐦</div><div><b>Follow Twitter</b><br><small>+$5,000</small></div></div><button class="buy-btn ${game.tasks.follow?'btn-locked':'btn-claim'}" onclick="doTask('follow')">${game.tasks.follow?'Done':'Go'}</button></div>
-                    <div class="item"><div class="item-left"><div class="item-icon">📢</div><div><b>Join Channel</b><br><small>+$5,000</small></div></div><button class="buy-btn ${game.tasks.join?'btn-locked':'btn-claim'}" onclick="doTask('join')">${game.tasks.join?'Done':'Go'}</button></div>
-                    <div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Invite 1 Friend</b><br><small>UNLOCK DRAGON</small></div></div><button class="buy-btn ${game.tasks.invite?'btn-locked':'btn-claim'}" onclick="doTask('invite')">${game.tasks.invite?'Equipped':'Invite'}</button></div>
+                    <div class="item"><div class="item-left"><div class="item-icon">📢</div><div><b>Join News</b><br><small>+$5,000</small></div></div><button class="buy-btn ${game.tasks.join?'btn-locked':'btn-claim'}" onclick="doTask('join')">JOIN</button></div>
+                    <div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Invite Friend</b><br><small>DRAGON SKIN</small></div></div><button class="buy-btn ${game.tasks.invite?'btn-locked':'btn-claim'}" onclick="doTask('invite')">INVITE</button></div>
                 `;
             } else if(currentTab === 'skins') {
                 if(game.hasReferralSkin) container.innerHTML += `<div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Dragon</b></div></div><button class="buy-btn btn-available" onclick="game.skin='https://img.icons8.com/fluency/240/dragon.png';render()">EQUIP</button></div>`;
@@ -197,9 +179,9 @@
                     container.innerHTML += `<div class="item"><div class="item-left"><div class="item-icon">${s.icon}</div><div><b>${s.n}</b></div></div><button class="buy-btn ${locked?'btn-locked':'btn-available'}" onclick="${locked?'':`buySkin('${s.img}',${s.c})`}">$${s.c.toLocaleString()}</button></div>`;
                 });
             } else {
-                container.innerHTML += `<div style="text-align:center; padding:30px; background:#1e293b; border-radius:20px;"><h1 style="font-size:50px; margin:0;">🎲</h1><p>Risk 50% for 2x Win</p><button class="buy-btn btn-available" style="width:100%; height:60px;" onclick="gamble()">BET $${Math.floor(game.bal * 0.5).toLocaleString()}</button></div>`;
+                container.innerHTML += `<div style="text-align:center; padding:20px; background:#1e293b; border-radius:20px;"><h1>🎲</h1><button class="buy-btn btn-available" style="width:100%;" onclick="gamble()">BET 50%</button></div>`;
             }
-            localStorage.setItem('pixel_v9', JSON.stringify(game));
+            localStorage.setItem('pixel_v10', JSON.stringify(game));
         }
 
         function doClick(e) {
@@ -209,7 +191,7 @@
         }
 
         function buy(k, cost, isClick) {
-            if(game.bal >= cost) { game.bal -= cost; game.up[k]++; if(isClick) game.clickPower++; else game.psv += config.market[k].i; tg.HapticFeedback.notificationOccurred('success'); render(); }
+            if(game.bal >= cost) { game.bal -= cost; game.up[k]++; if(isClick) game.clickPower++; else game.psv += config.market[k].i; render(); }
         }
 
         function buySkin(img, cost) { if(game.bal >= cost) { game.bal -= cost; game.skin = img; render(); } }
@@ -222,10 +204,9 @@
         }
 
         function showPop(e) {
-            if(!e) return;
             const p = document.createElement('div'); p.className='pop'; p.innerText=`+$${game.clickPower}`;
-            const x = (e.touches && e.touches[0]) ? e.touches[0].pageX : (e.pageX || window.innerWidth/2);
-            const y = (e.touches && e.touches[0]) ? e.touches[0].pageY : (e.pageY || window.innerHeight/2);
+            const x = (e.touches && e.touches[0]) ? e.touches[0].pageX : (e.pageX || 150);
+            const y = (e.touches && e.touches[0]) ? e.touches[0].pageY : (e.pageY || 300);
             p.style.left = x + 'px'; p.style.top = y + 'px';
             document.body.appendChild(p); setTimeout(()=>p.remove(),600);
         }
