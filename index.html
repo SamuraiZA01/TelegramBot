@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SQUAD EMPIRE FINAL</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
@@ -21,9 +22,13 @@
         .list-item { display: flex; justify-content: space-between; padding: 12px; background: #242b38; margin-bottom: 8px; border-radius: 12px; align-items: center; border: 1px solid #333; }
         .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
         .rank-me { border: 1px solid var(--gold); background: #2d3645; }
+        /* Error Box Style */
+        #debug-console { display:none; position:fixed; top:0; left:0; right:0; background:rgba(255,0,0,0.9); color:white; padding:20px; z-index:9999; font-size:12px; font-family:monospace; }
     </style>
 </head>
 <body>
+
+    <div id="debug-console"></div>
 
     <div class="header">
         <div>$ <span id="balance">0</span></div>
@@ -41,31 +46,23 @@
         </div>
         <div class="content-area">
             <div id="market-view"></div>
-            <div id="leader-view" style="display:none">Loading ranks...</div>
+            <div id="leader-view" style="display:none">Connecting to Leaderboard...</div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // 1. Keep this URL (It is correct)
-        const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
-        
-        // 2. PASTE THE 'anon' KEY HERE (Must start with 'eyJ')
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4";
+        // --- 1. ERROR CATCHER (Helps us see why it crashes) ---
+        window.onerror = function(msg, url, line) {
+            let d = document.getElementById('debug-console');
+            d.style.display = 'block';
+            d.innerHTML += `ERROR: ${msg} (Line ${line})<br>`;
+        };
 
-        let supabase = null;
-        try {
-            // Simple check to ensure key is replaced
-            if (SB_KEY.startsWith("eyJ")) {
-                supabase = window.supabase.createClient(SB_URL, SB_KEY);
-                console.log("Database connected.");
-            } else {
-                console.warn("Waiting for correct 'eyJ' key...");
-            }
-        } catch (e) { console.error("DB Error:", e); }
-
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+        // --- 2. GAME DATA (Runs immediately) ---
+        const ITEMS = [
+            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1 },
+            { id: 'office', name: 'Studio', cost: 500, power: 15 }
+        ];
 
         let game = {
             balance: parseFloat(localStorage.getItem('b')) || 0,
@@ -73,51 +70,20 @@
             upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0 }
         };
 
-        const ITEMS = [
-            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1 },
-            { id: 'office', name: 'Studio', cost: 500, power: 15 }
-        ];
+        let tg = window.Telegram?.WebApp;
+        if(tg) tg.expand();
 
-        function showTab(tab) {
-            document.getElementById('market-view').style.display = tab === 'market' ? 'block' : 'none';
-            document.getElementById('leader-view').style.display = tab === 'leader' ? 'block' : 'none';
-            document.getElementById('btn-market').classList.toggle('active', tab === 'market');
-            document.getElementById('btn-leader').classList.toggle('active', tab === 'leader');
-            if (tab === 'leader') updateLeaderboardUI();
-        }
-
-        async function updateLeaderboardUI() {
-            if (!supabase) {
-                document.getElementById('leader-view').innerText = "Please update code with the 'anon' (eyJ) key from Supabase.";
-                return;
-            }
-            const { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
-            
-            if (error) {
-                document.getElementById('leader-view').innerText = "Connecting...";
-                return;
-            }
-            
-            let html = '<h3 style="margin-top:0">Global Ranks</h3>';
-            data.forEach((p, i) => {
-                let isMe = p.user_id == tg.initDataUnsafe?.user?.id;
-                html += `<div class="list-item ${isMe ? 'rank-me' : ''}">
-                    <span>#${i+1} ${p.username}</span>
-                    <span style="color:var(--gold)">$${Math.floor(p.balance).toLocaleString()}</span>
+        // --- 3. UI FUNCTIONS (Runs immediately) ---
+        function renderShop() {
+            let html = '<h3 style="margin-top:0">Upgrades</h3>';
+            ITEMS.forEach((item, idx) => {
+                let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+                html += `<div class="list-item">
+                    <span>${item.name} (Lv ${game.upgrades[item.id]})</span>
+                    <button class="buy-btn" onclick="buy(${idx})">$${cost}</button>
                 </div>`;
             });
-            document.getElementById('leader-view').innerHTML = html;
-        }
-
-        async function syncToCloud() {
-            if (!supabase || !tg.initDataUnsafe?.user) return;
-            try {
-                await supabase.from('leaderboard').upsert({ 
-                    user_id: String(tg.initDataUnsafe.user.id), 
-                    username: tg.initDataUnsafe.user.username || "Player", 
-                    balance: Math.floor(game.balance) 
-                });
-            } catch (e) { }
+            document.getElementById('market-view').innerHTML = html;
         }
 
         function mainLoop() {
@@ -129,11 +95,6 @@
             localStorage.setItem('u', JSON.stringify(game.upgrades));
             setTimeout(mainLoop, 100);
         }
-
-        document.getElementById('tap-target').onclick = () => {
-            game.balance += 1;
-            tg.HapticFeedback.impactOccurred('light');
-        };
 
         function buy(idx) {
             let item = ITEMS[idx];
@@ -147,21 +108,76 @@
             }
         }
 
-        function renderShop() {
-            let html = '<h3 style="margin-top:0">Upgrades</h3>';
-            ITEMS.forEach((item, idx) => {
-                let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
-                html += `<div class="list-item">
-                    <span>${item.name} (Lv ${game.upgrades[item.id]})</span>
-                    <button class="buy-btn" onclick="buy(${idx})">$${cost}</button>
-                </div>`;
-            });
-            document.getElementById('market-view').innerHTML = html;
+        document.getElementById('tap-target').onclick = () => {
+            game.balance += 1;
+            if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        };
+
+        function showTab(tab) {
+            document.getElementById('market-view').style.display = tab === 'market' ? 'block' : 'none';
+            document.getElementById('leader-view').style.display = tab === 'leader' ? 'block' : 'none';
+            document.getElementById('btn-market').classList.toggle('active', tab === 'market');
+            document.getElementById('btn-leader').classList.toggle('active', tab === 'leader');
+            if (tab === 'leader') updateLeaderboardUI();
         }
 
+        // --- 4. START GAME (Before Database) ---
         renderShop();
         mainLoop();
-        setInterval(syncToCloud, 10000);
+        console.log("Game Started Successfully.");
+
+        // --- 5. SUPABASE CONNECTION (Runs Last) ---
+        // REPLACE THE KEY BELOW CAREFULLY
+        const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4"; 
+
+        let supabase = null;
+
+        async function initSupabase() {
+            try {
+                if (SB_KEY.includes("https://qkxbwxhvlcztjtnonjm.supabase.co")) {
+                    console.warn("Skipping DB: No Key Provided");
+                    return;
+                }
+                supabase = window.supabase.createClient(SB_URL, SB_KEY);
+                console.log("Supabase Initialized");
+                setInterval(syncToCloud, 10000);
+            } catch (e) {
+                console.error("Supabase Init Failed:", e);
+                document.getElementById('leader-view').innerHTML = "Database Connection Failed.";
+            }
+        }
+
+        async function updateLeaderboardUI() {
+            if (!supabase) return;
+            const { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
+            if (error) return;
+            
+            let html = '<h3 style="margin-top:0">Global Ranks</h3>';
+            data.forEach((p, i) => {
+                let isMe = p.user_id == (tg?.initDataUnsafe?.user?.id || 0);
+                html += `<div class="list-item ${isMe ? 'rank-me' : ''}">
+                    <span>#${i+1} ${p.username}</span>
+                    <span style="color:var(--gold)">$${Math.floor(p.balance).toLocaleString()}</span>
+                </div>`;
+            });
+            document.getElementById('leader-view').innerHTML = html;
+        }
+
+        async function syncToCloud() {
+            if (!supabase || !tg?.initDataUnsafe?.user) return;
+            try {
+                await supabase.from('leaderboard').upsert({ 
+                    user_id: String(tg.initDataUnsafe.user.id), 
+                    username: tg.initDataUnsafe.user.username || "Player", 
+                    balance: Math.floor(game.balance) 
+                });
+            } catch (e) { }
+        }
+
+        // Initialize DB after a short delay to ensure UI is ready
+        setTimeout(initSupabase, 500);
+
     </script>
 </body>
 </html>
