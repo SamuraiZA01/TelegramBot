@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Empire Master: Pro Edition</title>
+    <title>Empire Master: Social Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --locked: #475569; --danger: #ef4444; }
+        :root { --bg: #0b0e14; --card: #1c212b; --primary: #3b82f6; --accent: #fbbf24; --success: #10b981; --locked: #475569; --danger: #ef4444; --purple: #a855f7; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; height: 100vh; touch-action: none; user-select: none; }
         
         /* Dashboard */
@@ -14,9 +14,9 @@
         .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
 
         /* Game Area */
-        .click-area { height: 40vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .click-area { height: 38vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         #main-target { 
-            width: 170px; height: 170px; border-radius: 50%; 
+            width: 160px; height: 160px; border-radius: 50%; 
             background: radial-gradient(circle, #3b82f6, #1e3a8a); 
             display: flex; align-items: center; justify-content: center; 
             box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); 
@@ -26,8 +26,8 @@
         #main-target img { width: 90px; height: 90px; object-fit: contain; pointer-events: none; }
 
         /* Navigation Tabs */
-        .tab-bar { display: flex; background: #2d3748; margin: 5px 20px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; }
-        .tab { flex: 1; padding: 12px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .tab-bar { display: flex; background: #2d3748; margin: 5px 15px; border-radius: 12px; border: 1px solid #3e4b5e; z-index: 50; position: relative; }
+        .tab { flex: 1; padding: 12px 5px; border: none; background: none; color: #94a3b8; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; }
         .tab.active { background: var(--primary); color: white; border-radius: 10px; }
 
         /* DRAGGABLE MARKET SHEET */
@@ -43,16 +43,17 @@
         .handle { height: 45px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: ns-resize; touch-action: none; }
         .bar { width: 50px; height: 5px; background: #475569; border-radius: 10px; }
         
-        .content { padding: 0 20px 40px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+        .content { padding: 0 20px 60px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
 
         /* List Items */
         .item { background: #2d3748; padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #3e4b5e; }
         .item-left { display: flex; align-items: center; gap: 12px; }
         .item-icon { width: 45px; height: 45px; background: #1e293b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
         
-        .buy-btn { border: none; padding: 12px; border-radius: 12px; font-weight: bold; min-width: 105px; color: white; transition: 0.2s; cursor: pointer; }
+        .buy-btn { border: none; padding: 10px 15px; border-radius: 10px; font-weight: bold; min-width: 90px; color: white; transition: 0.2s; cursor: pointer; font-size: 12px; }
         .btn-available { background: var(--primary); box-shadow: 0 4px 0 #1d4ed8; }
         .btn-locked { background: var(--locked); opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+        .btn-claim { background: var(--success); box-shadow: 0 4px 0 #059669; }
 
         .pop { position: absolute; color: var(--accent); font-weight: bold; animation: popUp 0.6s forwards; pointer-events: none; z-index: 200; font-size: 20px; }
         @keyframes popUp { to { transform: translateY(-100px); opacity: 0; } }
@@ -62,7 +63,7 @@
 
     <div class="header">
         <div><div style="font-size: 10px; color: #94a3b8;">BALANCE</div><div class="stat-val">$<span id="bal">0</span></div></div>
-        <div style="text-align: right;"><div style="font-size: 10px; color: #94a3b8;">PASSIVE INCOME</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
+        <div style="text-align: right;"><div style="font-size: 10px; color: #94a3b8;">PASSIVE</div><div style="color: #10b981; font-weight: bold;">+$<span id="psv">0</span>/s</div></div>
     </div>
 
     <div class="click-area">
@@ -76,15 +77,14 @@
     </div>
 
     <div class="tab-bar">
-        <button class="tab active" onclick="setTab('market')">🛒 UPGRADES</button>
-        <button class="tab" onclick="setTab('skins')">👕 SKINS</button>
-        <button class="tab" onclick="setTab('gamble')">🎰 GAMBLE</button>
+        <button class="tab active" onclick="setTab('market')">Upgrades</button>
+        <button class="tab" onclick="setTab('tasks')">Tasks</button>
+        <button class="tab" onclick="setTab('skins')">Skins</button>
+        <button class="tab" onclick="setTab('gamble')">Gamble</button>
     </div>
 
     <div class="market-sheet" id="sheet">
-        <div class="handle" id="drag-handle">
-            <div class="bar"></div>
-        </div>
+        <div class="handle" id="drag-handle"><div class="bar"></div></div>
         <div class="content" id="main-content"></div>
     </div>
 
@@ -94,10 +94,12 @@
         let isExpanded = false;
 
         // --- GAME STATE ---
-        let game = JSON.parse(localStorage.getItem('pixel_v7')) || {
+        let game = JSON.parse(localStorage.getItem('pixel_v9')) || {
             bal: 0, psv: 0, nrg: 1000, mult: 1, clickPower: 1, 
             skin: 'https://img.icons8.com/fluency/240/rocket.png',
-            up: { intern: 0, office: 0, manager: 0, factory: 0, clicker: 0 }
+            up: { intern: 0, office: 0, manager: 0, factory: 0, clicker: 0 },
+            tasks: { follow: false, join: false, invite: false },
+            hasReferralSkin: false
         };
 
         const config = {
@@ -118,35 +120,23 @@
         // --- UNIVERSAL DRAG LOGIC ---
         const sheet = document.getElementById('sheet');
         const handle = document.getElementById('drag-handle');
-        let startY = 0;
-        let isDragging = false;
-        let currentTranslate = 75;
-
+        let startY = 0, isDragging = false, currentTranslate = 75;
         const getY = (e) => e.touches ? e.touches[0].clientY : e.clientY;
 
-        const startDrag = (e) => {
-            startY = getY(e);
-            isDragging = true;
-            sheet.style.transition = 'none';
-        };
-
+        const startDrag = (e) => { startY = getY(e); isDragging = true; sheet.style.transition = 'none'; };
         const onDrag = (e) => {
             if (!isDragging) return;
-            const moveY = getY(e);
-            const deltaY = ((moveY - startY) / window.innerHeight) * 100;
-            let nextTranslate = (isExpanded ? 10 : 75) + deltaY;
-            if (nextTranslate < 5) nextTranslate = 5;
-            if (nextTranslate > 85) nextTranslate = 85;
-            sheet.style.transform = `translateY(${nextTranslate}%)`;
-            currentTranslate = nextTranslate;
+            const deltaY = ((getY(e) - startY) / window.innerHeight) * 100;
+            let next = (isExpanded ? 10 : 75) + deltaY;
+            if (next < 5) next = 5; if (next > 85) next = 85;
+            sheet.style.transform = `translateY(${next}%)`;
+            currentTranslate = next;
         };
-
         const endDrag = () => {
-            if (!isDragging) return;
-            isDragging = false;
+            if (!isDragging) return; isDragging = false;
             sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            if (currentTranslate < 45) { isExpanded = true; sheet.style.transform = 'translateY(10%)'; }
-            else { isExpanded = false; sheet.style.transform = 'translateY(75%)'; }
+            isExpanded = currentTranslate < 45;
+            sheet.style.transform = isExpanded ? 'translateY(10%)' : 'translateY(75%)';
         };
 
         handle.addEventListener('mousedown', startDrag);
@@ -156,7 +146,26 @@
         window.addEventListener('mouseup', endDrag);
         window.addEventListener('touchend', endDrag);
 
-        // --- GAME LOGIC ---
+        // --- SOCIAL & TASKS ---
+        function doTask(type) {
+            if (game.tasks[type]) return;
+            if (type === 'invite') {
+                const url = `https://t.me/share/url?url=https://t.me/YOUR_BOT&text=Join%20my%20Empire!`;
+                tg.openTelegramLink(url);
+                game.tasks.invite = true;
+                game.hasReferralSkin = true;
+                game.skin = 'https://img.icons8.com/fluency/240/dragon.png';
+                alert("EXCLUSIVE: Dragon Skin Unlocked!");
+            } else {
+                tg.openLink(type === 'follow' ? 'https://twitter.com' : 'https://t.me');
+                game.bal += 5000;
+                game.tasks[type] = true;
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+            render();
+        }
+
+        // --- GAME ENGINE ---
         function setTab(t) {
             currentTab = t;
             document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(t)));
@@ -167,87 +176,63 @@
             document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
             document.getElementById('psv').innerText = (game.psv * game.mult).toLocaleString();
             document.getElementById('target-img').src = game.skin;
-            
             const container = document.getElementById('main-content');
             container.innerHTML = `<h3 style="margin-bottom:15px; text-transform:uppercase;">${currentTab}</h3>`;
 
             if(currentTab === 'market') {
                 Object.keys(config.market).forEach(k => {
-                    let item = config.market[k]; 
-                    let cost = Math.floor(item.b * Math.pow(1.5, game.up[k]));
-                    let locked = game.bal < cost;
-                    container.innerHTML += `
-                        <div class="item">
-                            <div class="item-left">
-                                <div class="item-icon">${item.icon}</div>
-                                <div><b>${item.n}</b><br><small style="color:#94a3b8">${item.isClick ? '+1 per tap' : '+'+item.i+'/s'} (Lv ${game.up[k]})</small></div>
-                            </div>
-                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" onclick="${locked ? '' : `buy('${k}',${cost},${item.isClick})`}">
-                                ${locked ? '🔒 ' : ''}$${cost.toLocaleString()}
-                            </button>
-                        </div>`;
+                    let item = config.market[k], cost = Math.floor(item.b * Math.pow(1.5, game.up[k])), locked = game.bal < cost;
+                    container.innerHTML += `<div class="item"><div class="item-left"><div class="item-icon">${item.icon}</div><div><b>${item.n}</b><br><small>${item.isClick?'+1 tap':'+'+item.i+'/s'}</small></div></div><button class="buy-btn ${locked?'btn-locked':'btn-available'}" onclick="${locked?'':`buy('${k}',${cost},${item.isClick})`}">$${cost.toLocaleString()}</button></div>`;
                 });
+            } else if(currentTab === 'tasks') {
+                container.innerHTML += `
+                    <div class="item"><div class="item-left"><div class="item-icon">🐦</div><div><b>Follow Twitter</b><br><small>+$5,000</small></div></div><button class="buy-btn ${game.tasks.follow?'btn-locked':'btn-claim'}" onclick="doTask('follow')">${game.tasks.follow?'Done':'Go'}</button></div>
+                    <div class="item"><div class="item-left"><div class="item-icon">📢</div><div><b>Join Channel</b><br><small>+$5,000</small></div></div><button class="buy-btn ${game.tasks.join?'btn-locked':'btn-claim'}" onclick="doTask('join')">${game.tasks.join?'Done':'Go'}</button></div>
+                    <div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Invite 1 Friend</b><br><small>UNLOCK DRAGON</small></div></div><button class="buy-btn ${game.tasks.invite?'btn-locked':'btn-claim'}" onclick="doTask('invite')">${game.tasks.invite?'Equipped':'Invite'}</button></div>
+                `;
             } else if(currentTab === 'skins') {
+                if(game.hasReferralSkin) container.innerHTML += `<div class="item" style="border:1px solid var(--purple)"><div class="item-left"><div class="item-icon">🐲</div><div><b>Dragon</b></div></div><button class="buy-btn btn-available" onclick="game.skin='https://img.icons8.com/fluency/240/dragon.png';render()">EQUIP</button></div>`;
                 Object.keys(config.skins).forEach(k => {
-                    let s = config.skins[k]; let locked = game.bal < s.c;
-                    container.innerHTML += `
-                        <div class="item">
-                            <div class="item-left"><div class="item-icon">${s.icon}</div><div><b>${s.n}</b></div></div>
-                            <button class="buy-btn ${locked ? 'btn-locked' : 'btn-available'}" onclick="${locked ? '' : `buySkin('${s.img}',${s.c})`}">$${s.c.toLocaleString()}</button>
-                        </div>`;
+                    let s = config.skins[k], locked = game.bal < s.c;
+                    container.innerHTML += `<div class="item"><div class="item-left"><div class="item-icon">${s.icon}</div><div><b>${s.n}</b></div></div><button class="buy-btn ${locked?'btn-locked':'btn-available'}" onclick="${locked?'':`buySkin('${s.img}',${s.c})`}">$${s.c.toLocaleString()}</button></div>`;
                 });
             } else {
-                container.innerHTML += `<div style="text-align:center; padding:30px; background:#1e293b; border-radius:20px; border: 1px solid #334155;">
-                    <h1 style="font-size:60px; margin:0;">🎲</h1>
-                    <p style="color:#cbd5e1;">Double or nothing? Bet 50% of your wallet.</p>
-                    <button class="buy-btn btn-available" style="width:100%; height:60px; font-size:18px;" onclick="gamble()">BET $${Math.floor(game.bal * 0.5).toLocaleString()}</button>
-                </div>`;
+                container.innerHTML += `<div style="text-align:center; padding:30px; background:#1e293b; border-radius:20px;"><h1 style="font-size:50px; margin:0;">🎲</h1><p>Risk 50% for 2x Win</p><button class="buy-btn btn-available" style="width:100%; height:60px;" onclick="gamble()">BET $${Math.floor(game.bal * 0.5).toLocaleString()}</button></div>`;
             }
-            localStorage.setItem('pixel_v7', JSON.stringify(game));
+            localStorage.setItem('pixel_v9', JSON.stringify(game));
         }
 
         function doClick(e) {
-            e.preventDefault();
-            if(game.nrg >= 1) { 
-                game.bal += game.clickPower;
-                game.nrg--; 
-                showPop(e); 
-                tg.HapticFeedback.impactOccurred('light'); 
-            } else { tg.HapticFeedback.notificationOccurred('warning'); }
+            if(e) e.preventDefault();
+            if(game.nrg >= 1) { game.bal += game.clickPower; game.nrg--; showPop(e); tg.HapticFeedback.impactOccurred('light'); }
             render();
         }
 
         function buy(k, cost, isClick) {
-            if(game.bal >= cost) { 
-                game.bal -= cost; game.up[k]++;
-                if(isClick) game.clickPower += 1;
-                else game.psv += config.market[k].i; 
-                tg.HapticFeedback.notificationOccurred('success'); render(); 
-            }
+            if(game.bal >= cost) { game.bal -= cost; game.up[k]++; if(isClick) game.clickPower++; else game.psv += config.market[k].i; tg.HapticFeedback.notificationOccurred('success'); render(); }
         }
 
         function buySkin(img, cost) { if(game.bal >= cost) { game.bal -= cost; game.skin = img; render(); } }
 
         function gamble() {
             let bet = game.bal * 0.5; if(bet < 1) return;
-            if(Math.random() > 0.5) { game.bal += bet; tg.HapticFeedback.notificationOccurred('success'); alert("JACKPOT!"); }
-            else { game.bal -= bet; tg.HapticFeedback.notificationOccurred('error'); alert("BUSTED!"); }
+            if(Math.random() > 0.5) { game.bal += bet; tg.HapticFeedback.notificationOccurred('success'); }
+            else { game.bal -= bet; tg.HapticFeedback.notificationOccurred('error'); }
             render();
         }
 
         function showPop(e) {
+            if(!e) return;
             const p = document.createElement('div'); p.className='pop'; p.innerText=`+$${game.clickPower}`;
-            const x = e.touches ? e.touches[0].pageX : e.pageX;
-            const y = e.touches ? e.touches[0].pageY : e.pageY;
+            const x = (e.touches && e.touches[0]) ? e.touches[0].pageX : (e.pageX || window.innerWidth/2);
+            const y = (e.touches && e.touches[0]) ? e.touches[0].pageY : (e.pageY || window.innerHeight/2);
             p.style.left = x + 'px'; p.style.top = y + 'px';
             document.body.appendChild(p); setTimeout(()=>p.remove(),600);
         }
 
         setInterval(() => { 
-            game.bal += (game.psv / 10); 
-            if(game.nrg < 1000) game.nrg += 1; 
+            game.bal += (game.psv / 10); if(game.nrg < 1000) game.nrg += 1; 
             document.getElementById('bal').innerText = Math.floor(game.bal).toLocaleString();
-            document.getElementById('nrg-t').innerText = `Energy: ${Math.floor(game.nrg)}/1000`;
             document.getElementById('nrg-f').style.width = (game.nrg / 10) + "%";
         }, 100);
 
