@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html>
-<head><title>FINAL DB CHECK</title></head>
+<head><title>DIAGNOSTIC 3.0</title></head>
 <body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
-    <h2>DIAGNOSTIC 2.0</h2>
-    <div id="out">> Starting...</div>
+    <h2>DIAGNOSTIC 3.0 (No-Module Version)</h2>
+    <div id="out">> Waiting for library...</div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <script>
         const log = (m, color="#0f0") => {
             document.getElementById('out').innerHTML += `<div style="color:${color}">> ${m}</div>`;
         };
 
         async function run() {
-            // CHECK THESE TWO VALUES CAREFULLY
             const URL = "https://qkxbwxhvlcztjtnonjm.supabase.co";
             const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4"; 
 
             try {
-                const supabase = createClient(URL, KEY);
-                log("Client created.");
+                if (!window.supabase) {
+                    log("LIBRARY FAILED TO LOAD", "#f00");
+                    return;
+                }
 
-                log("Attempting to talk to table 'leaderboard'...");
-                // Note: using lowercase 'leaderboard' to match your Table Editor screenshot
-                const { data, error } = await supabase.from('leaderboard').select('*');
+                const sb = window.supabase.createClient(URL, KEY);
+                log("Client created. Testing table...");
+
+                // Using a simple fetch test first
+                const { data, error } = await sb.from('leaderboard').select('*').limit(1);
 
                 if (error) {
-                    log("DATABASE REJECTED US: " + error.message, "#f00");
-                    console.log(error);
+                    log("CONNECTED, BUT TABLE ERROR: " + error.message, "#f59e0b");
                 } else {
                     log("SUCCESS! Connection is open.", "#0f0");
-                    log("Rows found: " + data.length);
+                    log("Data: " + JSON.stringify(data));
                 }
             } catch (err) {
-                log("BROWSER BLOCKED REQUEST: " + err.message, "#f00");
+                log("NETWORK BLOCK: " + err.message, "#f00");
+                log("TIP: Try turning off your VPN or AdBlocker.");
             }
         }
-        run();
+
+        window.onload = run;
     </script>
 </body>
 </html>
