@@ -1,76 +1,144 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>DB TEST</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SQUAD EMPIRE</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; line-height: 1.5; }
-        .success { color: #0f0; font-weight: bold; }
-        .fail { color: #f00; font-weight: bold; }
-        .step { margin-bottom: 10px; border-left: 2px solid #333; padding-left: 10px; }
+        :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        .header { display: flex; justify-content: space-between; background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--accent); }
+        .game-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding-bottom: 240px; }
+        #tap-target { width: 180px; height: 180px; border-radius: 50%; background: #2563eb; border: 8px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 60px; cursor: pointer; transition: transform 0.1s; z-index: 5; }
+        #tap-target:active { transform: scale(0.9); }
+        .shop-container { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); height: 260px; border-radius: 20px 20px 0 0; padding: 15px; z-index: 100; border-top: 1px solid #333; display: flex; flex-direction: column; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 10px; }
+        .nav-btn { flex: 1; padding: 10px; background: #242b38; border: none; color: white; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .nav-btn.active { background: var(--accent); }
+        .content-area { flex-grow: 1; overflow-y: auto; }
+        .list-item { display: flex; justify-content: space-between; padding: 12px; background: #242b38; margin-bottom: 8px; border-radius: 12px; align-items: center; border: 1px solid #333; }
+        .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>SUPABASE CONNECTIVITY DIAGNOSTIC</h2>
-    <div id="terminal"></div>
 
-    <script type="module">
-        // Using a Module script to prevent "Supabase is not defined" errors
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+    <div class="header">
+        <div>$ <span id="balance">0</span></div>
+        <div style="text-align: right;">+ $<span id="income">0</span>/s</div>
+    </div>
 
-        const log = (msg, status = '') => {
-            const div = document.createElement('div');
-            div.className = 'step';
-            div.innerHTML = `> ${msg} ... <span class="${status}">${status.toUpperCase()}</span>`;
-            document.getElementById('terminal').appendChild(div);
+    <div class="game-area">
+        <div id="tap-target">🚀</div>
+    </div>
+
+    <div class="shop-container">
+        <div class="nav-tabs">
+            <button class="nav-btn active" id="btn-market" onclick="showTab('market')">MARKET</button>
+            <button class="nav-btn" id="btn-leader" onclick="showTab('leader')">GLOBAL</button>
+        </div>
+        <div class="content-area">
+            <div id="market-view"></div>
+            <div id="leader-view" style="display:none; text-align:center; padding-top:20px;">Leaderboard is loading...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- SETTINGS ---
+        const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4"; // USE THE LONG eyJ KEY HERE
+
+        const supabase = (SB_KEY.startsWith("eyJ")) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let game = {
+            balance: parseFloat(localStorage.getItem('b')) || 0,
+            income: parseFloat(localStorage.getItem('i')) || 0,
+            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0 }
         };
 
-        async function runDiagnostic() {
-            const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
-            const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4";
+        const ITEMS = [
+            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1 },
+            { id: 'office', name: 'Studio', cost: 500, power: 15 }
+        ];
 
-            log("Testing Script Loading", "success");
+        // --- CORE LOGIC ---
+        function mainLoop() {
+            game.balance += (game.income / 10);
+            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
+            document.getElementById('income').innerText = game.income;
+            localStorage.setItem('b', game.balance);
+            localStorage.setItem('i', game.income);
+            localStorage.setItem('u', JSON.stringify(game.upgrades));
+            setTimeout(mainLoop, 100);
+        }
 
-            try {
-                // 1. Initialize
-                const supabase = createClient(SB_URL, SB_KEY);
-                log("Supabase Client Initialization", "success");
+        document.getElementById('tap-target').onclick = () => {
+            game.balance += 1;
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        };
 
-                // 2. Network Ping
-                log("Pinging Supabase Server");
-                const { data, error } = await supabase.from('leaderboard').select('*').limit(1);
-
-                if (error) {
-                    if (error.message.includes("Failed to fetch")) {
-                        log("Network Error: Check if RLS is on or URL is blocked", "fail");
-                    } else {
-                        log("Table Error: " + error.message, "fail");
-                    }
-                    console.error(error);
-                } else {
-                    log("Connection Verified", "success");
-                    log("Data Received: " + JSON.stringify(data), "success");
-                }
-
-                // 3. Permission Check
-                log("Testing Write Permission");
-                const { error: writeErr } = await supabase.from('leaderboard').upsert({
-                    user_id: "diagnostic_test",
-                    username: "Tester",
-                    balance: 1
-                });
-
-                if (writeErr) {
-                    log("Write Failed: " + writeErr.message, "fail");
-                } else {
-                    log("Write Permission Verified", "success");
-                }
-
-            } catch (err) {
-                log("CRITICAL SCRIPT CRASH: " + err.message, "fail");
+        function buy(idx) {
+            let item = ITEMS[idx];
+            let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+            if (game.balance >= cost) {
+                game.balance -= cost;
+                game.income += item.power;
+                game.upgrades[item.id]++;
+                renderShop();
+                syncToCloud(); 
             }
         }
 
-        runDiagnostic();
+        function renderShop() {
+            let html = '';
+            ITEMS.forEach((item, idx) => {
+                let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+                html += `<div class="list-item">
+                    <span>${item.name} (Lv ${game.upgrades[item.id]})</span>
+                    <button class="buy-btn" onclick="buy(${idx})">$${cost}</button>
+                </div>`;
+            });
+            document.getElementById('market-view').innerHTML = html;
+        }
+
+        function showTab(tab) {
+            document.getElementById('market-view').style.display = tab === 'market' ? 'block' : 'none';
+            document.getElementById('leader-view').style.display = tab === 'leader' ? 'block' : 'none';
+            document.getElementById('btn-market').classList.toggle('active', tab === 'market');
+            document.getElementById('btn-leader').classList.toggle('active', tab === 'leader');
+            if (tab === 'leader') fetchLeaderboard();
+        }
+
+        // --- CLOUD LOGIC ---
+        async function fetchLeaderboard() {
+            if (!supabase) return;
+            const { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
+            if (error) {
+                document.getElementById('leader-view').innerText = "Database connection blocked. Check RLS.";
+                return;
+            }
+            let html = '<h3>Top Players</h3>';
+            data.forEach((p, i) => {
+                html += `<div class="list-item"><span>#${i+1} ${p.username}</span><span>$${p.balance}</span></div>`;
+            });
+            document.getElementById('leader-view').innerHTML = html;
+        }
+
+        async function syncToCloud() {
+            if (!supabase || !tg.initDataUnsafe?.user) return;
+            await supabase.from('leaderboard').upsert({ 
+                user_id: String(tg.initDataUnsafe.user.id), 
+                username: tg.initDataUnsafe.user.username || "Player", 
+                balance: Math.floor(game.balance) 
+            });
+        }
+
+        renderShop();
+        mainLoop();
+        setInterval(syncToCloud, 15000); // Auto-save every 15 seconds
     </script>
 </body>
 </html>
