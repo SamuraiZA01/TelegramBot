@@ -1,43 +1,120 @@
 <!DOCTYPE html>
-<html>
-<head><title>LEGACY SYSTEM CHECK</title></head>
-<body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
-    <h2>LEGACY DIAGNOSTIC 6.0</h2>
-    <div id="out">> Initializing...</div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Clicker Game</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; user-select: none; }
+        #balance { font-size: 48px; margin: 20px 0; color: #f1c40f; }
+        #click-btn { 
+            width: 200px; height: 200px; border-radius: 50%; border: none; 
+            background: radial-gradient(circle, #f1c40f, #d35400);
+            box-shadow: 0 10px 20px rgba(241, 196, 15, 0.4);
+            cursor: pointer; font-size: 24px; font-weight: bold; color: white;
+        }
+        #click-btn:active { transform: scale(0.95); }
+        #status { margin-top: 20px; font-size: 14px; color: #888; }
+    </style>
+</head>
+<body>
+
+    <h2 id="welcome">Welcome, Player</h2>
+    <div id="balance">0</div>
+    <button id="click-btn">CLICK!</button>
+    <div id="status">Connecting to database...</div>
 
     <script>
-        const log = (m, c="#0f0") => document.getElementById('out').innerHTML += `<div style="color:${c}">> ${m}</div>`;
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = "https://xoxcfctitnucpinlkqbk.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhveGNmY3RpdG51Y3BpbmxrcWJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDgyOTksImV4cCI6MjA4NDQ4NDI5OX0.rqyXXU1uopdb5SuazTGTM8vctbE8YT6UKAw8uILv1zA";
         
-        async function run() {
-            // 1. USE THE URL FROM image_ae81ff.png
-            const URL = "https://qkxbwxhvlcztjtnonjm.supabase.co";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const tg = window.Telegram.WebApp;
+        
+        // State
+        let score = 0;
+        let userId = "guest";
+        let username = "Guest Player";
+
+        // --- INITIALIZATION ---
+        async function init() {
+            tg.expand(); // Make the app full screen
             
-            // 2. PASTE THE ENTIRE LONG 'anon public' KEY FROM image_ae0e5b.png HERE
-            const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4"; 
+            // Get user data from Telegram
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                userId = String(user.id);
+                username = user.username || user.first_name || "Unknown";
+                document.getElementById('welcome').innerText = `Welcome, ${username}`;
+            }
 
+            document.getElementById('status').innerText = "Fetching your data...";
+            
+            // Load user from Supabase or Create if new
             try {
-                const sb = window.supabase.createClient(URL, KEY);
-                log("Client Created.");
+                const { data, error } = await supabase
+                    .from('leaderboard')
+                    .select('balance')
+                    .eq('user_id', userId)
+                    .single();
 
-                log("Pinging 'leaderboard' table...");
-                // We use a simple select to verify the connection
-                const { data, error } = await sb.from('leaderboard').select('*').limit(1);
-
-                if (error) {
-                    log("DATABASE ERROR: " + error.message, "#f59e0b");
-                    console.log(error);
+                if (data) {
+                    score = data.balance;
+                    updateUI();
+                    document.getElementById('status').innerText = "Data loaded.";
                 } else {
-                    log("SUCCESS! Connection is fully open.", "#0f0");
-                    log("Table is reachable.");
+                    // New user: Create them in DB
+                    await supabase.from('leaderboard').insert([
+                        { user_id: userId, username: username, balance: 0 }
+                    ]);
+                    document.getElementById('status').innerText = "New profile created!";
                 }
             } catch (err) {
-                log("FETCH ERROR: " + err.message, "#f00");
-                log("Try opening this in an Incognito window to bypass browser cache.", "#fff");
+                document.getElementById('status').innerText = "Offline Mode (Dev)";
             }
         }
-        window.onload = run;
+
+        // --- GAME LOGIC ---
+        function updateUI() {
+            document.getElementById('balance').innerText = Math.floor(score).toLocaleString();
+        }
+
+        document.getElementById('click-btn').addEventListener('click', () => {
+            score += 1;
+            updateUI();
+            saveToDatabase();
+        });
+
+        // Save to Supabase (debounced to avoid spamming the API)
+        let saveTimeout;
+        function saveToDatabase() {
+            clearTimeout(saveTimeout);
+            document.getElementById('status').innerText = "Saving...";
+            
+            saveTimeout = setTimeout(async () => {
+                const { error } = await supabase
+                    .from('leaderboard')
+                    .upsert({ 
+                        user_id: userId, 
+                        username: username, 
+                        balance: score 
+                    }, { onConflict: 'user_id' });
+
+                if (!error) {
+                    document.getElementById('status').innerText = "Synced with Cloud";
+                } else {
+                    document.getElementById('status').innerText = "Sync Error: " + error.message;
+                }
+            }, 1000); // Wait 1 second after last click before saving
+        }
+
+        // Start the app
+        init();
     </script>
 </body>
 </html>
