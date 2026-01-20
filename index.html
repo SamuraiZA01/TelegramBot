@@ -57,134 +57,129 @@
         </div>
 
     <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+    let tg = window.Telegram.WebApp;
+    tg.expand();
 
-        // --- GAME STATE ---
-        let game = {
-            balance: parseFloat(localStorage.getItem('b')) || 0,
-            income: parseFloat(localStorage.getItem('i')) || 0,
-            energy: parseFloat(localStorage.getItem('e')) || 1000,
-            multiplier: parseFloat(localStorage.getItem('m')) || 1,
-            lastSave: parseInt(localStorage.getItem('t')) || Date.now(),
-            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0 }
-        };
+    let game = {
+        balance: parseFloat(localStorage.getItem('b')) || 0,
+        income: parseFloat(localStorage.getItem('i')) || 0,
+        energy: parseFloat(localStorage.getItem('e')) || 1000,
+        multiplier: parseFloat(localStorage.getItem('m')) || 1,
+        lastSave: parseInt(localStorage.getItem('t')) || Date.now(),
+        lastDaily: parseInt(localStorage.getItem('ld')) || 0,
+        upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0 }
+    };
 
-        const ITEMS = [
-            { id: 'dev', name: 'Hire Intern', baseCost: 15, power: 1, icon: '👨‍💻' },
-            { id: 'office', name: 'Open Office', baseCost: 200, power: 15, icon: '🏢' },
-            { id: 'ai', name: 'AI Supercomputer', baseCost: 5000, power: 150, icon: '🤖' }
-        ];
+    const ITEMS = [
+        { id: 'dev', name: 'Hire Intern', baseCost: 50, power: 1, icon: '👨‍💻' },
+        { id: 'office', name: 'Open Office', baseCost: 500, power: 15, icon: '🏢' },
+        { id: 'ai', name: 'AI Supercomputer', baseCost: 10000, power: 200, icon: '🤖' }
+    ];
 
-        // --- CORE LOGIC ---
-        function init() {
-            // Calculate Offline Income
-            let now = Date.now();
-            let elapsed = Math.floor((now - game.lastSave) / 1000);
-            if (elapsed > 10 && game.income > 0) {
-                let earned = elapsed * game.income;
-                game.balance += earned;
-                tg.showAlert(`Welcome back! Your empire earned $${earned.toLocaleString()} while you were away.`);
-            }
+    function init() {
+        // 1. Daily Reward Check
+        const today = new Date().toDateString();
+        if (game.lastDaily !== today) {
+            game.balance += 100; // Gift for starting/returning
+            game.lastDaily = today;
+            tg.showAlert("🌞 Daily Reward: +$100 added to your balance!");
+        }
+
+        // 2. Offline Income
+        let now = Date.now();
+        let elapsed = Math.floor((now - game.lastSave) / 1000);
+        if (elapsed > 10 && game.income > 0) {
+            let earned = Math.min(elapsed * game.income, game.income * 3600 * 2); // Max 2 hours offline
+            game.balance += earned;
+            tg.showPopup({
+                title: 'Offline Profits',
+                message: `While you were gone, your team generated $${Math.floor(earned).toLocaleString()}!`,
+                buttons: [{type: 'ok'}]
+            });
+        }
+        renderShop();
+        tick();
+    }
+
+    function tick() {
+        game.balance += (game.income / 10);
+        if (game.energy < 1000) game.energy += 0.8; 
+        updateUI();
+        save();
+        setTimeout(tick, 100);
+    }
+
+    document.getElementById('tap-target').onclick = (e) => {
+        if (game.energy >= 1) {
+            let gain = 1 * game.multiplier;
+            game.balance += gain;
+            game.energy -= 1;
+            spawnFloat(e.clientX, e.clientY, `+$${gain}`);
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    };
+
+    function buyUpgrade(idx) {
+        let item = ITEMS[idx];
+        let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
+        
+        if (game.balance >= cost) {
+            game.balance -= cost;
+            game.income += item.power * game.multiplier;
+            game.upgrades[item.id]++;
             renderShop();
-            tick();
+            tg.HapticFeedback.notificationOccurred('success');
         }
+    }
 
-        function tick() {
-            // Passive Income
-            game.balance += (game.income / 10); // Run every 100ms for smoothness
-            
-            // Energy Regen
-            if (game.energy < 1000) game.energy += 0.5;
+    function updateUI() {
+        document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
+        document.getElementById('income').innerText = game.income.toLocaleString();
+        document.getElementById('energy-fill').style.width = (game.energy / 10) + "%";
+        document.getElementById('energy-text').innerText = Math.floor(game.energy);
+        document.getElementById('mult').innerText = game.multiplier;
 
-            updateUI();
-            save();
-            setTimeout(tick, 100);
-        }
-
-        document.getElementById('tap-target').onclick = (e) => {
-            if (game.energy >= 1) {
-                let gain = 1 * game.multiplier;
-                game.balance += gain;
-                game.energy -= 1;
-                spawnFloat(e.clientX, e.clientY, `+$${gain}`);
-                tg.HapticFeedback.impactOccurred('light');
-            } else {
-                tg.HapticFeedback.notificationOccurred('error');
-            }
-        };
-
-        function buyUpgrade(idx) {
-            let item = ITEMS[idx];
+        // Visual feedback for shop: enable/disable buttons
+        ITEMS.forEach((item, idx) => {
             let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
-            
-            if (game.balance >= cost) {
-                game.balance -= cost;
-                game.income += item.power * game.multiplier;
-                game.upgrades[item.id]++;
-                renderShop();
-                tg.HapticFeedback.notificationOccurred('success');
-            }
-        }
+            let btn = document.querySelectorAll('.buy-btn')[idx];
+            if (btn) btn.disabled = (game.balance < cost);
+        });
+    }
 
-        function prestige() {
-            if (game.balance < 100000) {
-                tg.showAlert("You need at least $100,000 to Prestige!");
-                return;
-            }
-            tg.showConfirm("Reset all progress for a permanent 2x earnings boost?", (ok) => {
-                if (ok) {
-                    game.balance = 0;
-                    game.income = 0;
-                    game.upgrades = { dev: 0, office: 0, ai: 0 };
-                    game.multiplier *= 2;
-                    renderShop();
-                }
-            });
-        }
+    function renderShop() {
+        let html = '';
+        ITEMS.forEach((item, idx) => {
+            let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
+            html += `
+                <div class="upgrade-item">
+                    <div><b>${item.icon} ${item.name}</b><small>Lv ${game.upgrades[item.id]}</small></div>
+                    <button class="buy-btn" onclick="buyUpgrade(${idx})">$${cost.toLocaleString()}</button>
+                </div>`;
+        });
+        document.getElementById('shop').innerHTML = '<h4 style="margin: 0 0 10px 0;">Marketplace</h4>' + html;
+    }
 
-        // --- UI HELPERS ---
-        function updateUI() {
-            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
-            document.getElementById('income').innerText = game.income.toLocaleString();
-            document.getElementById('energy-fill').style.width = (game.energy / 10) + "%";
-            document.getElementById('energy-text').innerText = Math.floor(game.energy);
-            document.getElementById('mult').innerText = game.multiplier;
-        }
+    function spawnFloat(x, y, txt) {
+        let el = document.createElement('div');
+        el.innerText = txt;
+        el.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:#f59e0b; font-weight:bold; pointer-events:none; z-index:100; font-size: 24px;`;
+        document.body.appendChild(el);
+        el.animate([{transform:'translateY(0)', opacity:1}, {transform:'translateY(-120px)', opacity:0}], 700);
+        setTimeout(() => el.remove(), 700);
+    }
 
-        function renderShop() {
-            let html = '';
-            ITEMS.forEach((item, idx) => {
-                let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
-                html += `
-                    <div class="upgrade-item">
-                        <div><b>${item.icon} ${item.name}</b><small>Level ${game.upgrades[item.id]}</small></div>
-                        <button class="buy-btn" onclick="buyUpgrade(${idx})" ${game.balance < cost ? 'disabled' : ''}>$${cost.toLocaleString()}</button>
-                    </div>
-                `;
-            });
-            document.getElementById('shop').innerHTML = '<h4 style="margin: 0 0 10px 0;">Marketplace</h4>' + html;
-        }
+    function save() {
+        localStorage.setItem('b', game.balance);
+        localStorage.setItem('i', game.income);
+        localStorage.setItem('e', game.energy);
+        localStorage.setItem('m', game.multiplier);
+        localStorage.setItem('t', Date.now());
+        localStorage.setItem('ld', game.lastDaily);
+        localStorage.setItem('u', JSON.stringify(game.upgrades));
+    }
 
-        function spawnFloat(x, y, txt) {
-            let el = document.createElement('div');
-            el.innerText = txt;
-            el.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:var(--gold); font-weight:bold; pointer-events:none; z-index:100;`;
-            document.body.appendChild(el);
-            el.animate([{transform:'translateY(0)', opacity:1}, {transform:'translateY(-100px)', opacity:0}], 800);
-            setTimeout(() => el.remove(), 800);
-        }
-
-        function save() {
-            localStorage.setItem('b', game.balance);
-            localStorage.setItem('i', game.income);
-            localStorage.setItem('e', game.energy);
-            localStorage.setItem('m', game.multiplier);
-            localStorage.setItem('t', Date.now());
-            localStorage.setItem('u', JSON.stringify(game.upgrades));
-        }
-
-        init();
-    </script>
+    init();
+</script>
 </body>
 </html>
