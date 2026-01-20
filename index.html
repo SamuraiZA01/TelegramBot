@@ -11,13 +11,17 @@
     </style>
 </head>
 <body>
-    <h1>Tap for your Squad!</h1>
+    <h1>Squad Clicker 2026</h1>
     <div id="coin">💰</div>
     <div class="score">Balance: <span id="balance">0</span></div>
-    
+
+    <button id="invite-btn" onclick="inviteFriends()" style="margin-top: 20px; padding: 15px 30px; background: #0088cc; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">
+        🚀 Invite Friends
+    </button>
+
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Opens the app to full height
+        tg.expand();
 
         let balance = localStorage.getItem('coins') || 0;
         document.getElementById('balance').innerText = balance;
@@ -26,10 +30,18 @@
             balance++;
             document.getElementById('balance').innerText = balance;
             localStorage.setItem('coins', balance);
-            
-            // Haptic feedback (vibration) makes it feel "premium"
             tg.HapticFeedback.impactOccurred('medium');
         };
+
+        // ADD THIS FUNCTION TO HANDLE THE INVITE
+        function inviteFriends() {
+            // Replace 'yourbot/appname' with your actual bot/app path from BotFather
+            const botUrl = "t.me/yourbot/appname"; 
+            const text = `I've collected ${balance} coins in Squad Clicker! Can you beat me?`;
+            const inviteLink = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(text)}`;
+            
+            tg.openTelegramLink(inviteLink);
+        }
     </script>
 </body>
 </html>
