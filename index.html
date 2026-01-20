@@ -3,118 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Clicker Game</title>
-    
+    <title>Squad-based Clicker</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; user-select: none; }
-        #balance { font-size: 48px; margin: 20px 0; color: #f1c40f; }
-        #click-btn { 
-            width: 200px; height: 200px; border-radius: 50%; border: none; 
-            background: radial-gradient(circle, #f1c40f, #d35400);
-            box-shadow: 0 10px 20px rgba(241, 196, 15, 0.4);
-            cursor: pointer; font-size: 24px; font-weight: bold; color: white;
+        :root { --primary: #0088cc; --bg: #0f172a; --card: #1e293b; --accent: #f59e0b; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 15px; user-select: none; }
+        
+        .header-box { background: var(--card); padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; border: 1px solid #334155; }
+        .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+        .stat-value { font-size: 22px; color: var(--accent); font-weight: bold; }
+
+        .energy-container { margin: 15px 0; }
+        .energy-bar { background: #334155; height: 10px; border-radius: 5px; overflow: hidden; }
+        #energy-fill { background: #10b981; width: 100%; height: 100%; transition: width 0.3s; }
+
+        #rocket-container { margin: 40px auto; width: 220px; height: 220px; position: relative; cursor: pointer; }
+        #rocket-circle { 
+            width: 100%; height: 100%; border-radius: 50%; 
+            background: radial-gradient(circle, #2563eb, #1e3a8a);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 30px rgba(37, 99, 235, 0.4);
         }
-        #click-btn:active { transform: scale(0.95); }
-        #status { margin-top: 20px; font-size: 14px; color: #888; }
+        #rocket-img { width: 100px; transition: transform 0.1s; }
+        #rocket-container:active #rocket-img { transform: scale(0.9) rotate(-5deg); }
+
+        .marketplace { background: var(--card); border-radius: 20px 20px 0 0; padding: 20px; position: fixed; bottom: 0; left: 0; right: 0; height: 35vh; overflow-y: auto; }
+        .market-item { 
+            background: #2d3748; padding: 12px; border-radius: 12px; 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .buy-btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; }
+        .buy-btn:disabled { background: #4a5568; color: #a0aec0; }
     </style>
 </head>
 <body>
 
-    <h2 id="welcome">Welcome, Player</h2>
-    <div id="balance">0</div>
-    <button id="click-btn">CLICK!</button>
-    <div id="status">Connecting to database...</div>
+    <div class="header-box">
+        <div><div class="stat-label">Balance</div><div class="stat-value">$<span id="balance">0</span></div></div>
+        <div style="text-align:right;"><div class="stat-label">Passive</div><div class="stat-value">+$<span id="passive">0</span>/s</div></div>
+    </div>
+
+    <div class="energy-container">
+        <div id="energy-text" style="font-size:12px; margin-bottom:5px;">Energy: 1000/1000</div>
+        <div class="energy-bar"><div id="energy-fill"></div></div>
+    </div>
+
+    <div id="rocket-container">
+        <div id="rocket-circle">
+            <img id="rocket-img" src="https://img.icons8.com/fluency/240/rocket.png" alt="Rocket">
+        </div>
+    </div>
+
+    <div class="marketplace">
+        <h3 style="margin-top:0;">Marketplace</h3>
+        <div class="market-item">
+            <div><strong>Hire Intern</strong><br><small id="intern-lv">Lv 0</small></div>
+            <button class="buy-btn" id="buy-intern">Cost: $50</button>
+        </div>
+        <div class="market-item">
+            <div><strong>Open Office</strong><br><small id="office-lv">Lv 0</small></div>
+            <button class="buy-btn" id="buy-office">Cost: $500</button>
+        </div>
+    </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = "https://xoxcfctitnucpinlkqbk.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_-pVrqbWPxo6k1MXQfC83mQ_SvR__vQM";
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const tg = window.Telegram.WebApp;
-        
-        // State
-        let score = 0;
-        let userId = "guest";
-        let username = "Guest Player";
+        // Game State
+        let data = JSON.parse(localStorage.getItem('gameData')) || {
+            balance: 0,
+            passive: 0,
+            energy: 1000,
+            maxEnergy: 1000,
+            interns: 0,
+            offices: 0
+        };
 
-        // --- INITIALIZATION ---
-        async function init() {
-            tg.expand(); // Make the app full screen
+        const updateUI = () => {
+            document.getElementById('balance').innerText = Math.floor(data.balance).toLocaleString();
+            document.getElementById('passive').innerText = data.passive;
+            document.getElementById('energy-text').innerText = `Energy: ${Math.floor(data.energy)}/${data.maxEnergy}`;
+            document.getElementById('energy-fill').style.width = (data.energy / data.maxEnergy * 100) + "%";
             
-            // Get user data from Telegram
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                userId = String(user.id);
-                username = user.username || user.first_name || "Unknown";
-                document.getElementById('welcome').innerText = `Welcome, ${username}`;
-            }
-
-            document.getElementById('status').innerText = "Fetching your data...";
+            document.getElementById('intern-lv').innerText = `Lv ${data.interns} (+$${data.interns * 2}/s)`;
+            document.getElementById('office-lv').innerText = `Lv ${data.offices} (+$${data.offices * 15}/s)`;
             
-            // Load user from Supabase or Create if new
-            try {
-                const { data, error } = await supabase
-                    .from('leaderboard')
-                    .select('balance')
-                    .eq('user_id', userId)
-                    .single();
+            document.getElementById('buy-intern').innerText = `Cost: $${50 + (data.interns * 25)}`;
+            document.getElementById('buy-office').innerText = `Cost: $${500 + (data.offices * 200)}`;
+            
+            document.getElementById('buy-intern').disabled = data.balance < (50 + (data.interns * 25));
+            document.getElementById('buy-office').disabled = data.balance < (500 + (data.offices * 200));
+            
+            localStorage.setItem('gameData', JSON.stringify(data));
+        };
 
-                if (data) {
-                    score = data.balance;
-                    updateUI();
-                    document.getElementById('status').innerText = "Data loaded.";
-                } else {
-                    // New user: Create them in DB
-                    await supabase.from('leaderboard').insert([
-                        { user_id: userId, username: username, balance: 0 }
-                    ]);
-                    document.getElementById('status').innerText = "New profile created!";
-                }
-            } catch (err) {
-                document.getElementById('status').innerText = "Offline Mode (Dev)";
+        // Clicking
+        document.getElementById('rocket-container').addEventListener('click', () => {
+            if (data.energy >= 1) {
+                data.balance += 1;
+                data.energy -= 1;
+                updateUI();
             }
-        }
-
-        // --- GAME LOGIC ---
-        function updateUI() {
-            document.getElementById('balance').innerText = Math.floor(score).toLocaleString();
-        }
-
-        document.getElementById('click-btn').addEventListener('click', () => {
-            score += 1;
-            updateUI();
-            saveToDatabase();
         });
 
-        // Save to Supabase (debounced to avoid spamming the API)
-        let saveTimeout;
-        function saveToDatabase() {
-            clearTimeout(saveTimeout);
-            document.getElementById('status').innerText = "Saving...";
-            
-            saveTimeout = setTimeout(async () => {
-                const { error } = await supabase
-                    .from('leaderboard')
-                    .upsert({ 
-                        user_id: userId, 
-                        username: username, 
-                        balance: score 
-                    }, { onConflict: 'user_id' });
+        // Market Logic
+        document.getElementById('buy-intern').addEventListener('click', () => {
+            let cost = 50 + (data.interns * 25);
+            if (data.balance >= cost) {
+                data.balance -= cost;
+                data.interns++;
+                data.passive += 2;
+                updateUI();
+            }
+        });
 
-                if (!error) {
-                    document.getElementById('status').innerText = "Synced with Cloud";
-                } else {
-                    document.getElementById('status').innerText = "Sync Error: " + error.message;
-                }
-            }, 1000); // Wait 1 second after last click before saving
-        }
+        document.getElementById('buy-office').addEventListener('click', () => {
+            let cost = 500 + (data.offices * 200);
+            if (data.balance >= cost) {
+                data.balance -= cost;
+                data.offices++;
+                data.passive += 15;
+                updateUI();
+            }
+        });
 
-        // Start the app
-        init();
+        // Loops
+        setInterval(() => {
+            // Passive Income
+            data.balance += (data.passive / 10);
+            // Energy Regen
+            if (data.energy < data.maxEnergy) data.energy += 0.5;
+            updateUI();
+        }, 100);
+
+        updateUI();
+        window.Telegram.WebApp.expand();
     </script>
 </body>
 </html>
