@@ -3,65 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SQUAD EMPIRE LIVE</title>
+    <title>SQUAD EMPIRE RECOVERED</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 15px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         .header { display: flex; justify-content: space-between; background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--accent); }
-        .stat-box span { font-size: 22px; font-weight: 800; color: var(--gold); }
-        .energy-bar { width: 100%; height: 8px; background: #222; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-        #energy-fill { height: 100%; background: #10b981; width: 100%; transition: width 0.2s; }
         .game-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding-bottom: 220px; }
-        #tap-target { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #2563eb, #1e40af); border: 8px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 70px; cursor: pointer; transition: transform 0.05s; }
-        #tap-target:active { transform: scale(0.92); }
-        .shop-container { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-radius: 25px 25px 0 0; height: 220px; transition: height 0.3s; display: flex; flex-direction: column; z-index: 1000; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
-        .drag-handle { width: 100%; height: 35px; display: flex; justify-content: center; align-items: center; cursor: grab; }
-        .drag-handle::after { content: ''; width: 40px; height: 4px; background: #4b5563; border-radius: 10px; }
-        .content-scroll { flex-grow: 1; overflow-y: auto; padding: 0 20px 30px 20px; }
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .nav-btn { flex: 1; padding: 12px; background: #242b38; border: none; color: white; border-radius: 12px; font-weight: bold; }
-        .nav-btn.active { background: var(--accent); }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #2d3545; border-radius: 12px; margin-bottom: 8px; border: 1px solid #3d4759; }
-        .buy-btn { background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
-        .buy-btn:disabled { background: #475569; opacity: 0.5; }
+        #tap-target { width: 180px; height: 180px; border-radius: 50%; background: #2563eb; border: 8px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 60px; cursor: pointer; transition: transform 0.1s; z-index: 5; }
+        #tap-target:active { transform: scale(0.9); }
+        .shop-container { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); height: 230px; border-radius: 20px 20px 0 0; padding: 20px; overflow-y: auto; z-index: 100; border-top: 1px solid #333; }
+        .list-item { display: flex; justify-content: space-between; padding: 12px; background: #242b38; margin-bottom: 8px; border-radius: 12px; align-items: center; }
+        .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="stat-box">$<span id="balance">0</span></div>
-        <div style="text-align: right;">+$<span id="income">0</span>/s</div>
+        <div>$ <span id="balance">0</span></div>
+        <div style="text-align: right;">+ $<span id="income">0</span>/s</div>
     </div>
-    <div class="energy-bar"><div id="energy-fill"></div></div>
 
-    <div class="game-area"><div id="tap-target">🚀</div></div>
+    <div class="game-area">
+        <div id="tap-target">🚀</div>
+    </div>
 
-    <div class="shop-container" id="panel">
-        <div class="drag-handle" id="drag-zone"></div>
-        <div style="padding: 0 20px;">
-            <div class="nav-tabs">
-                <button class="nav-btn active" id="tab-shop" onclick="switchTab('shop')">MARKET</button>
-                <button class="nav-btn" id="tab-lead" onclick="switchTab('lead')">GLOBAL</button>
-            </div>
-        </div>
-        <div class="content-scroll">
-            <div id="shop-view"></div>
-            <div id="lead-view" style="display: none;"></div>
-        </div>
+    <div class="shop-container">
+        <div id="shop-view"></div>
     </div>
 
     <script>
-        // --- 1. SET YOUR KEYS HERE ---
-        const SB_URL = "https://qkxbwxhvlcztlzjtnojm.supabase.co"; 
-        const SB_KEY = "sb_publishable_XHjxXNo2v7Ahwv1ddJ35Ug_tqDRRQeE";
-        
+       
+       // --- CONFIGURATION ---
+const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
+const SB_KEY = "sb_publishable_XHjxXNo2v7Ahwv1ddJ35Ug_tqDRRQeE";
+
         let supabase = null;
         try {
-            supabase = window.supabase.createClient(SB_URL, SB_KEY);
-        } catch (e) { console.error("Supabase fail:", e); }
+            // Check if user actually replaced the placeholder strings
+            if (SB_URL && !SB_URL.includes("https://qkxbwxhvlcztjtnonjm.supabase.co")) {
+                supabase = window.supabase.createClient(SB_URL, SB_KEY);
+                console.log("Database connected.");
+            }
+        } catch (e) { console.error("Database fail:", e); }
 
         let tg = window.Telegram.WebApp;
         tg.expand();
@@ -69,115 +54,75 @@
         let game = {
             balance: parseFloat(localStorage.getItem('b')) || 0,
             income: parseFloat(localStorage.getItem('i')) || 0,
-            energy: 1000,
-            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0 }
+            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0 }
         };
 
         const ITEMS = [
-            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1, icon: '👨‍💻' },
-            { id: 'office', name: 'Studio', cost: 500, power: 15, icon: '🏢' },
-            { id: 'ai', name: 'AI Core', cost: 10000, power: 250, icon: '🤖' }
+            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1 },
+            { id: 'office', name: 'Studio', cost: 500, power: 15 }
         ];
 
-        async function fetchLeaderboard() {
-            document.getElementById('lead-view').innerText = "Loading...";
-            try {
-                let { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
-                if (error) throw error;
-                let html = '<h3 style="margin:10px 0">Top Players</h3>';
-                data.forEach((p, i) => {
-                    html += `<div class="list-item"><span>#${i+1} ${p.username}</span><span style="color:var(--gold)">$${Math.floor(p.balance).toLocaleString()}</span></div>`;
-                });
-                document.getElementById('lead-view').innerHTML = html;
-            } catch (e) { document.getElementById('lead-view').innerText = "Leaderboard currently unavailable."; }
+        // --- CORE LOGIC ---
+        function mainLoop() {
+            game.balance += (game.income / 10);
+            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
+            document.getElementById('income').innerText = game.income;
+            
+            // Local save
+            localStorage.setItem('b', game.balance);
+            localStorage.setItem('i', game.income);
+            localStorage.setItem('u', JSON.stringify(game.upgrades));
+            
+            setTimeout(mainLoop, 100);
         }
 
-        async function syncWithCloud() {
-            if (!supabase || !tg.initDataUnsafe.user) return;
+        // Tap event
+        document.getElementById('tap-target').addEventListener('click', () => {
+            game.balance += 1;
+            tg.HapticFeedback.impactOccurred('light');
+        });
+
+        function buy(idx) {
+            let item = ITEMS[idx];
+            let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
+            
+            if (game.balance >= cost) {
+                game.balance -= cost;
+                game.income += item.power;
+                game.upgrades[item.id]++;
+                renderShop();
+                syncToCloud(); 
+            }
+        }
+
+        async function syncToCloud() {
+            if (!supabase || !tg.initDataUnsafe?.user) return;
             try {
                 await supabase.from('leaderboard').upsert({ 
                     user_id: String(tg.initDataUnsafe.user.id), 
                     username: tg.initDataUnsafe.user.username || "Player", 
                     balance: Math.floor(game.balance) 
                 });
-            } catch (e) { console.log("Sync error"); }
-        }
-
-        function mainLoop() {
-            game.balance += (game.income / 10);
-            if (game.energy < 1000) game.energy += 0.5;
-            updateUI();
-            setTimeout(mainLoop, 100);
-        }
-
-        setInterval(syncWithCloud, 15000);
-
-        document.getElementById('tap-target').onclick = (e) => {
-            if (game.energy >= 1) {
-                game.balance += 1; game.energy -= 1;
-                spawnFloat(e.clientX, e.clientY, "+$1");
-                tg.HapticFeedback.impactOccurred('light');
-            }
-        };
-
-        function switchTab(tab) {
-            document.getElementById('shop-view').style.display = tab === 'shop' ? 'block' : 'none';
-            document.getElementById('lead-view').style.display = tab === 'lead' ? 'block' : 'none';
-            document.getElementById('tab-shop').classList.toggle('active', tab === 'shop');
-            document.getElementById('tab-lead').classList.toggle('active', tab === 'lead');
-            if (tab === 'lead') fetchLeaderboard();
+            } catch (e) { console.warn("Cloud sync failed."); }
         }
 
         function renderShop() {
-            let html = '<h3 style="margin:10px 0">Market</h3>';
+            let html = '<h3 style="margin-top:0">Upgrades</h3>';
             ITEMS.forEach((item, idx) => {
                 let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
                 html += `<div class="list-item">
-                    <div><b>${item.icon} ${item.name}</b><br><small>Lv ${game.upgrades[item.id]}</small></div>
-                    <button class="buy-btn" onclick="buy(${idx})" ${game.balance < cost ? 'disabled' : ''}>$${cost}</button>
+                    <span>${item.name} (Lv ${game.upgrades[item.id]})</span>
+                    <button class="buy-btn" onclick="buy(${idx})">$${cost}</button>
                 </div>`;
             });
             document.getElementById('shop-view').innerHTML = html;
         }
 
-        function buy(idx) {
-            let item = ITEMS[idx];
-            let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
-            if (game.balance >= cost) {
-                game.balance -= cost; game.income += item.power;
-                game.upgrades[item.id]++; renderShop();
-                tg.HapticFeedback.notificationOccurred('success');
-            }
-        }
-
-        function updateUI() {
-            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
-            document.getElementById('income').innerText = game.income;
-            document.getElementById('energy-fill').style.width = (game.energy/10) + "%";
-            localStorage.setItem('b', game.balance);
-            localStorage.setItem('i', game.income);
-            localStorage.setItem('u', JSON.stringify(game.upgrades));
-            
-            // Re-check buttons
-            document.querySelectorAll('.buy-btn').forEach((btn, i) => {
-                let cost = Math.floor(ITEMS[i].cost * Math.pow(1.15, game.upgrades[ITEMS[i].id]));
-                btn.disabled = game.balance < cost;
-            });
-        }
-
-        function spawnFloat(x,y,t){
-            let el = document.createElement('div'); el.innerText=t; el.style.cssText=`position:fixed;left:${x}px;top:${y}px;color:var(--gold);font-weight:bold;pointer-events:none;z-index:2000;`;
-            document.body.appendChild(el); el.animate([{transform:'translateY(0)',opacity:1},{transform:'translateY(-100px)',opacity:0}],700);
-            setTimeout(()=>el.remove(),700);
-        }
-
-        // Panel Drag
-        let p=document.getElementById('panel'),d=document.getElementById('drag-zone'),isD=false,sY,sH;
-        d.ontouchstart=(e)=>{isD=true;sY=e.touches[0].clientY;sH=p.offsetHeight;p.style.transition='none';};
-        document.ontouchmove=(e)=>{if(!isD)return;let h=sH+(sY-e.touches[0].clientY);if(h>200&&h<window.innerHeight*0.9)p.style.height=h+'px';};
-        document.ontouchend=()=>{isD=false;p.style.transition='height 0.3s';p.style.height=p.offsetHeight>window.innerHeight*0.4?'85%':'220px';};
-
-        renderShop(); mainLoop();
+        // Start everything
+        renderShop();
+        mainLoop();
+        // Sync every 15 seconds
+        setInterval(syncToCloud, 15000);
     </script>
 </body>
 </html>
