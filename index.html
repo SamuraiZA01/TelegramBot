@@ -1,47 +1,190 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Squad Clicker 2026</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <title>SQUAD EMPIRE 2026</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); text-align: center; font-family: sans-serif; }
-        #coin { font-size: 100px; cursor: pointer; user-select: none; transition: transform 0.1s; }
-        #coin:active { transform: scale(0.9); }
-        .score { font-size: 24px; font-weight: bold; }
+        :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 15px; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Stats Header */
+        .header { display: flex; justify-content: space-between; background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--accent); }
+        .stat-box b { display: block; font-size: 12px; color: #888; text-transform: uppercase; }
+        .stat-box span { font-size: 20px; font-weight: bold; color: var(--gold); }
+
+        /* Energy Bar */
+        .energy-container { width: 100%; height: 12px; background: #333; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+        #energy-fill { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); width: 100%; transition: width 0.3s; }
+
+        /* Main Game Area */
+        .game-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        #tap-target { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, #2563eb 0%, #1e40af 100%); border: 10px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 80px; cursor: pointer; transition: transform 0.05s; box-shadow: 0 0 50px rgba(37, 99, 235, 0.3); }
+        #tap-target:active { transform: scale(0.92); }
+
+        /* Bottom Menu / Shop */
+        .menu-tabs { display: flex; gap: 10px; margin-top: 10px; }
+        .tab-btn { flex: 1; padding: 10px; background: var(--card); border: none; color: white; border-radius: 10px; font-weight: bold; }
+        .tab-btn.active { background: var(--accent); }
+
+        .shop-container { flex-shrink: 0; height: 200px; overflow-y: auto; background: var(--card); border-radius: 20px 20px 0 0; padding: 15px; margin: 0 -15px -15px -15px; }
+        .upgrade-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #2d3440; border-radius: 12px; margin-bottom: 8px; border: 1px solid #3f4756; }
+        .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+        .buy-btn:disabled { background: #4b5563; opacity: 0.5; }
+
+        /* Prestige Button */
+        .prestige-btn { position: absolute; top: 10px; right: 10px; background: #7c3aed; color: white; padding: 5px 10px; border-radius: 5px; font-size: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Squad Clicker 2026</h1>
-    <div id="coin">💰</div>
-    <div class="score">Balance: <span id="balance">0</span></div>
 
-    <button id="invite-btn" onclick="inviteFriends()" style="margin-top: 20px; padding: 15px 30px; background: #0088cc; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">
-        🚀 Invite Friends
-    </button>
+    <div class="header">
+        <div class="stat-box"><b>Balance</b>$<span id="balance">0</span></div>
+        <div class="stat-box" style="text-align: right;"><b>Passive</b>+$<span id="income">0</span>/s</div>
+    </div>
+
+    <div class="energy-container"><div id="energy-fill"></div></div>
+    <div style="font-size: 12px; text-align: center; margin-top: -10px;">Energy: <span id="energy-text">1000</span>/1000</div>
+
+    <div class="game-area">
+        <button class="prestige-btn" onclick="prestige()">PRESTIGE (x<span id="mult">1</span>)</button>
+        <div id="tap-target">🚀</div>
+    </div>
+
+    <div class="shop-container" id="shop">
+        <h4 style="margin: 0 0 10px 0;">Marketplace</h4>
+        </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        let balance = localStorage.getItem('coins') || 0;
-        document.getElementById('balance').innerText = balance;
-
-        document.getElementById('coin').onclick = () => {
-            balance++;
-            document.getElementById('balance').innerText = balance;
-            localStorage.setItem('coins', balance);
-            tg.HapticFeedback.impactOccurred('medium');
+        // --- GAME STATE ---
+        let game = {
+            balance: parseFloat(localStorage.getItem('b')) || 0,
+            income: parseFloat(localStorage.getItem('i')) || 0,
+            energy: parseFloat(localStorage.getItem('e')) || 1000,
+            multiplier: parseFloat(localStorage.getItem('m')) || 1,
+            lastSave: parseInt(localStorage.getItem('t')) || Date.now(),
+            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0, ai: 0 }
         };
 
-        // ADD THIS FUNCTION TO HANDLE THE INVITE
-        function inviteFriends() {
-            // Replace 'yourbot/appname' with your actual bot/app path from BotFather
-            const botUrl = "https://t.me/SquadTugBot/SquadClicker"; 
-            const text = `I've collected ${balance} coins in Squad Clicker! Can you beat me?`;
-            const inviteLink = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(text)}`;
-            
-            tg.openTelegramLink(inviteLink);
+        const ITEMS = [
+            { id: 'dev', name: 'Hire Intern', baseCost: 15, power: 1, icon: '👨‍💻' },
+            { id: 'office', name: 'Open Office', baseCost: 200, power: 15, icon: '🏢' },
+            { id: 'ai', name: 'AI Supercomputer', baseCost: 5000, power: 150, icon: '🤖' }
+        ];
+
+        // --- CORE LOGIC ---
+        function init() {
+            // Calculate Offline Income
+            let now = Date.now();
+            let elapsed = Math.floor((now - game.lastSave) / 1000);
+            if (elapsed > 10 && game.income > 0) {
+                let earned = elapsed * game.income;
+                game.balance += earned;
+                tg.showAlert(`Welcome back! Your empire earned $${earned.toLocaleString()} while you were away.`);
+            }
+            renderShop();
+            tick();
         }
+
+        function tick() {
+            // Passive Income
+            game.balance += (game.income / 10); // Run every 100ms for smoothness
+            
+            // Energy Regen
+            if (game.energy < 1000) game.energy += 0.5;
+
+            updateUI();
+            save();
+            setTimeout(tick, 100);
+        }
+
+        document.getElementById('tap-target').onclick = (e) => {
+            if (game.energy >= 1) {
+                let gain = 1 * game.multiplier;
+                game.balance += gain;
+                game.energy -= 1;
+                spawnFloat(e.clientX, e.clientY, `+$${gain}`);
+                tg.HapticFeedback.impactOccurred('light');
+            } else {
+                tg.HapticFeedback.notificationOccurred('error');
+            }
+        };
+
+        function buyUpgrade(idx) {
+            let item = ITEMS[idx];
+            let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
+            
+            if (game.balance >= cost) {
+                game.balance -= cost;
+                game.income += item.power * game.multiplier;
+                game.upgrades[item.id]++;
+                renderShop();
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function prestige() {
+            if (game.balance < 100000) {
+                tg.showAlert("You need at least $100,000 to Prestige!");
+                return;
+            }
+            tg.showConfirm("Reset all progress for a permanent 2x earnings boost?", (ok) => {
+                if (ok) {
+                    game.balance = 0;
+                    game.income = 0;
+                    game.upgrades = { dev: 0, office: 0, ai: 0 };
+                    game.multiplier *= 2;
+                    renderShop();
+                }
+            });
+        }
+
+        // --- UI HELPERS ---
+        function updateUI() {
+            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
+            document.getElementById('income').innerText = game.income.toLocaleString();
+            document.getElementById('energy-fill').style.width = (game.energy / 10) + "%";
+            document.getElementById('energy-text').innerText = Math.floor(game.energy);
+            document.getElementById('mult').innerText = game.multiplier;
+        }
+
+        function renderShop() {
+            let html = '';
+            ITEMS.forEach((item, idx) => {
+                let cost = Math.floor(item.baseCost * Math.pow(1.15, game.upgrades[item.id]));
+                html += `
+                    <div class="upgrade-item">
+                        <div><b>${item.icon} ${item.name}</b><small>Level ${game.upgrades[item.id]}</small></div>
+                        <button class="buy-btn" onclick="buyUpgrade(${idx})" ${game.balance < cost ? 'disabled' : ''}>$${cost.toLocaleString()}</button>
+                    </div>
+                `;
+            });
+            document.getElementById('shop').innerHTML = '<h4 style="margin: 0 0 10px 0;">Marketplace</h4>' + html;
+        }
+
+        function spawnFloat(x, y, txt) {
+            let el = document.createElement('div');
+            el.innerText = txt;
+            el.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:var(--gold); font-weight:bold; pointer-events:none; z-index:100;`;
+            document.body.appendChild(el);
+            el.animate([{transform:'translateY(0)', opacity:1}, {transform:'translateY(-100px)', opacity:0}], 800);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        function save() {
+            localStorage.setItem('b', game.balance);
+            localStorage.setItem('i', game.income);
+            localStorage.setItem('e', game.energy);
+            localStorage.setItem('m', game.multiplier);
+            localStorage.setItem('t', Date.now());
+            localStorage.setItem('u', JSON.stringify(game.upgrades));
+        }
+
+        init();
     </script>
 </body>
 </html>
