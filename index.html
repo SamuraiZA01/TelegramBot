@@ -1,45 +1,42 @@
 <!DOCTYPE html>
 <html>
-<head><title>DIAGNOSTIC 3.0</title></head>
+<head><title>LEGACY SYSTEM CHECK</title></head>
 <body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
-    <h2>DIAGNOSTIC 3.0 (No-Module Version)</h2>
-    <div id="out">> Waiting for library...</div>
+    <h2>LEGACY DIAGNOSTIC 6.0</h2>
+    <div id="out">> Initializing...</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0"></script>
 
     <script>
-        const log = (m, color="#0f0") => {
-            document.getElementById('out').innerHTML += `<div style="color:${color}">> ${m}</div>`;
-        };
-
+        const log = (m, c="#0f0") => document.getElementById('out').innerHTML += `<div style="color:${c}">> ${m}</div>`;
+        
         async function run() {
+            // 1. USE THE URL FROM image_ae81ff.png
             const URL = "https://qkxbwxhvlcztjtnonjm.supabase.co";
-            const KEY = "sb_secret_Ft1KR_1U_4kRMHy_U6eMsQ_OfLThZeT"; 
+            
+            // 2. PASTE THE ENTIRE LONG 'anon public' KEY FROM image_ae0e5b.png HERE
+            const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFreGJ3eGh2bGN6dGx6anRub2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTA1NTYsImV4cCI6MjA4NDQ4NjU1Nn0.aoh-EdwTv42XhtIOHKveWtBMRHe25rYTk3UYguCOjh4"; 
 
             try {
-                if (!window.supabase) {
-                    log("LIBRARY FAILED TO LOAD", "#f00");
-                    return;
-                }
-
                 const sb = window.supabase.createClient(URL, KEY);
-                log("Client created. Testing table...");
+                log("Client Created.");
 
-                // Using a simple fetch test first
+                log("Pinging 'leaderboard' table...");
+                // We use a simple select to verify the connection
                 const { data, error } = await sb.from('leaderboard').select('*').limit(1);
 
                 if (error) {
-                    log("CONNECTED, BUT TABLE ERROR: " + error.message, "#f59e0b");
+                    log("DATABASE ERROR: " + error.message, "#f59e0b");
+                    console.log(error);
                 } else {
-                    log("SUCCESS! Connection is open.", "#0f0");
-                    log("Data: " + JSON.stringify(data));
+                    log("SUCCESS! Connection is fully open.", "#0f0");
+                    log("Table is reachable.");
                 }
             } catch (err) {
-                log("NETWORK BLOCK: " + err.message, "#f00");
-                log("TIP: Try turning off your VPN or AdBlocker.");
+                log("FETCH ERROR: " + err.message, "#f00");
+                log("Try opening this in an Incognito window to bypass browser cache.", "#fff");
             }
         }
-
         window.onload = run;
     </script>
 </body>
