@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Squad Clicker 2026</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); text-align: center; font-family: sans-serif; }
+        #coin { font-size: 100px; cursor: pointer; user-select: none; transition: transform 0.1s; }
+        #coin:active { transform: scale(0.9); }
+        .score { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Tap for your Squad!</h1>
+    <div id="coin">💰</div>
+    <div class="score">Balance: <span id="balance">0</span></div>
+    
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Opens the app to full height
+
+        let balance = localStorage.getItem('coins') || 0;
+        document.getElementById('balance').innerText = balance;
+
+        document.getElementById('coin').onclick = () => {
+            balance++;
+            document.getElementById('balance').innerText = balance;
+            localStorage.setItem('coins', balance);
+            
+            // Haptic feedback (vibration) makes it feel "premium"
+            tg.HapticFeedback.impactOccurred('medium');
+        };
+    </script>
+</body>
+</html>
