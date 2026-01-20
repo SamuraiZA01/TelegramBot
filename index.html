@@ -1,159 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SQUAD EMPIRE FINAL</title>
+    <title>Connection Test</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        :root { --bg: #0b0e14; --card: #1c212b; --accent: #0088cc; --gold: #f59e0b; --text: #ffffff; }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        .header { display: flex; justify-content: space-between; background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--accent); }
-        .game-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding-bottom: 240px; }
-        #tap-target { width: 180px; height: 180px; border-radius: 50%; background: #2563eb; border: 8px solid #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 60px; cursor: pointer; transition: transform 0.1s; z-index: 5; }
-        #tap-target:active { transform: scale(0.9); }
-        .shop-container { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); height: 260px; border-radius: 20px 20px 0 0; padding: 15px; z-index: 100; border-top: 1px solid #333; display: flex; flex-direction: column; }
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 10px; }
-        .nav-btn { flex: 1; padding: 10px; background: #242b38; border: none; color: white; border-radius: 10px; font-weight: bold; }
-        .nav-btn.active { background: var(--accent); }
-        .content-area { flex-grow: 1; overflow-y: auto; }
-        .list-item { display: flex; justify-content: space-between; padding: 12px; background: #242b38; margin-bottom: 8px; border-radius: 12px; align-items: center; border: 1px solid #333; }
-        .buy-btn { background: var(--accent); border: none; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
-        .rank-me { border: 1px solid var(--gold); background: #2d3645; }
-    </style>
+    <style>body{background:#111;color:#fff;font-family:sans-serif;padding:20px;}</style>
 </head>
 <body>
-
-    <div class="header">
-        <div>$ <span id="balance">0</span></div>
-        <div style="text-align: right;">+ $<span id="income">0</span>/s</div>
-    </div>
-
-    <div class="game-area">
-        <div id="tap-target">🚀</div>
-    </div>
-
-    <div class="shop-container">
-        <div class="nav-tabs">
-            <button class="nav-btn active" id="btn-market" onclick="showTab('market')">MARKET</button>
-            <button class="nav-btn" id="btn-leader" onclick="showTab('leader')">GLOBAL</button>
-        </div>
-        <div class="content-area">
-            <div id="market-view"></div>
-            <div id="leader-view" style="display:none">Loading ranks...</div>
-        </div>
-    </div>
+    <h2>Supabase Diagnostic</h2>
+    <div id="status">Connecting...</div>
+    <div id="log" style="font-family:monospace; margin-top:20px; color:#aaa;"></div>
 
     <script>
-        // --- CONFIGURATION ---
+        // 1. YOUR CREDENTIALS
         const SB_URL = "https://qkxbwxhvlcztjtnonjm.supabase.co"; 
-        const SB_KEY = "sb_publishable_XHjxXNo2v7Ahwv1ddJ35Ug_tqDRRQeE";
+        const SB_KEY = "sb_publishable_XHjxXNo2v7Ahwv1ddJ35Ug_tqDRRQeE"; // Note: This key looks odd in your screenshot, usually they start with 'eyJ...'
 
-        let supabase = null;
-        try {
-            // Re-established direct connection
-            supabase = window.supabase.createClient(SB_URL, SB_KEY);
-            console.log("Database connected.");
-        } catch (e) { console.error("DB Error:", e); }
-
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-
-        let game = {
-            balance: parseFloat(localStorage.getItem('b')) || 0,
-            income: parseFloat(localStorage.getItem('i')) || 0,
-            upgrades: JSON.parse(localStorage.getItem('u')) || { dev: 0, office: 0 }
-        };
-
-        const ITEMS = [
-            { id: 'dev', name: 'Junior Dev', cost: 50, power: 1 },
-            { id: 'office', name: 'Studio', cost: 500, power: 15 }
-        ];
-
-        function showTab(tab) {
-            document.getElementById('market-view').style.display = tab === 'market' ? 'block' : 'none';
-            document.getElementById('leader-view').style.display = tab === 'leader' ? 'block' : 'none';
-            document.getElementById('btn-market').classList.toggle('active', tab === 'market');
-            document.getElementById('btn-leader').classList.toggle('active', tab === 'leader');
-            if (tab === 'leader') updateLeaderboardUI();
+        // Function to log messages to screen
+        function log(msg) { 
+            document.getElementById('log').innerHTML += "<div>" + msg + "</div>"; 
+            console.log(msg);
         }
 
-        async function updateLeaderboardUI() {
-            if (!supabase) return;
-            // Fetch real data from your Supabase table
-            const { data, error } = await supabase.from('leaderboard').select('*').order('balance', { ascending: false }).limit(10);
-            if (error) {
-                document.getElementById('leader-view').innerText = "Error loading leaderboard.";
-                return;
-            }
-            
-            let html = '<h3 style="margin-top:0">Global Ranks</h3>';
-            data.forEach((p, i) => {
-                let isMe = p.user_id == tg.initDataUnsafe?.user?.id;
-                html += `<div class="list-item ${isMe ? 'rank-me' : ''}">
-                    <span>#${i+1} ${p.username}</span>
-                    <span style="color:var(--gold)">$${Math.floor(p.balance).toLocaleString()}</span>
-                </div>`;
-            });
-            document.getElementById('leader-view').innerHTML = html;
-        }
-
-        async function syncToCloud() {
-            if (!supabase || !tg.initDataUnsafe?.user) return;
+        async function testConnection() {
             try {
-                // Sends your score to Supabase
-                await supabase.from('leaderboard').upsert({ 
-                    user_id: String(tg.initDataUnsafe.user.id), 
-                    username: tg.initDataUnsafe.user.username || "Player", 
-                    balance: Math.floor(game.balance) 
+                // Step A: Initialize
+                log("1. Initializing Client...");
+                const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+                
+                // Step B: Try to Read
+                log("2. Attempting to READ from 'leaderboard'...");
+                const { data, error } = await supabase.from('leaderboard').select('*').limit(1);
+
+                if (error) {
+                    throw error;
+                }
+                
+                log("<b style='color:#0f0'>SUCCESS: Read connection working!</b>");
+                log("Data found: " + JSON.stringify(data));
+
+                // Step C: Try to Write (Test Row)
+                log("3. Attempting to WRITE a test row...");
+                const { error: writeErr } = await supabase.from('leaderboard').upsert({
+                    user_id: "test_user_999",
+                    username: "ConnectionBot",
+                    balance: 100
                 });
-            } catch (e) { }
-        }
 
-        function mainLoop() {
-            game.balance += (game.income / 10);
-            document.getElementById('balance').innerText = Math.floor(game.balance).toLocaleString();
-            document.getElementById('income').innerText = game.income;
-            localStorage.setItem('b', game.balance);
-            localStorage.setItem('i', game.income);
-            localStorage.setItem('u', JSON.stringify(game.upgrades));
-            setTimeout(mainLoop, 100);
-        }
+                if (writeErr) throw writeErr;
+                
+                document.getElementById('status').innerText = "✅ SYSTEM OPERATIONAL";
+                document.getElementById('status').style.color = "#0f0";
+                log("<b style='color:#0f0'>SUCCESS: Write connection working!</b>");
 
-        document.getElementById('tap-target').onclick = () => {
-            game.balance += 1;
-            tg.HapticFeedback.impactOccurred('light');
-        };
-
-        function buy(idx) {
-            let item = ITEMS[idx];
-            let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
-            if (game.balance >= cost) {
-                game.balance -= cost;
-                game.income += item.power;
-                game.upgrades[item.id]++;
-                renderShop();
-                syncToCloud(); 
+            } catch (err) {
+                document.getElementById('status').innerText = "❌ CONNECTION FAILED";
+                document.getElementById('status').style.color = "#f00";
+                log("<b style='color:red'>ERROR: " + err.message + "</b>");
+                log("Hint: Check your Table Name, Column Names, or RLS Policies.");
             }
         }
 
-        function renderShop() {
-            let html = '<h3 style="margin-top:0">Upgrades</h3>';
-            ITEMS.forEach((item, idx) => {
-                let cost = Math.floor(item.cost * Math.pow(1.15, game.upgrades[item.id]));
-                html += `<div class="list-item">
-                    <span>${item.name} (Lv ${game.upgrades[item.id]})</span>
-                    <button class="buy-btn" onclick="buy(${idx})">$${cost}</button>
-                </div>`;
-            });
-            document.getElementById('market-view').innerHTML = html;
-        }
-
-        renderShop();
-        mainLoop();
-        // Sync score to database every 10 seconds
-        setInterval(syncToCloud, 10000);
+        testConnection();
     </script>
 </body>
 </html>
