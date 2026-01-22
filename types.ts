@@ -19,7 +19,7 @@ export interface CaseItem {
 }
 
 export interface InventoryItem {
-  id: string; // unique instance id
+  id: string; 
   item: CaseItem;
   purchasePrice: number;
   unboxedAt: number;
@@ -51,14 +51,24 @@ export interface Skin {
   description: string;
 }
 
+export interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  emoji: string;
+  rotation: number;
+}
+
 export interface GameState {
   balance: number;
   totalEarned: number;
   passiveIncome: number;
   clickPower: number;
-  upgrades: Record<string, number>; // id -> level
-  ownedSkins: string[]; // array of skin IDs
-  activeSkin: string; // current skin ID
+  upgrades: Record<string, number>; 
+  ownedSkins: string[]; 
+  activeSkin: string; 
   inventory: InventoryItem[];
   lastSaved: number;
   dailyStreak: number;
@@ -71,4 +81,5 @@ export interface ClickPop {
   x: number;
   y: number;
   value: number;
+  isCrit: boolean;
 }

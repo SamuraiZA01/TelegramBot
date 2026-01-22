@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TabType, GameState, ClickPop, CaseItem, InventoryItem } from './types.ts';
 import { INITIAL_STATE, SAVE_KEY, UPGRADES, SKINS } from './constants.ts';
 import Kitchen from './components/Kitchen.tsx';
@@ -36,25 +36,69 @@ const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>(TabType.KITCHEN);
   const [pops, setPops] = useState<ClickPop[]>([]);
+  const [combo, setCombo] = useState(0);
+  const [isFrenzy, setIsFrenzy] = useState(false);
+  const lastClickTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
+      tg.enableClosingConfirmation();
     }
   }, []);
 
+  // PERSISTENCE
   useEffect(() => {
-    const timer = setInterval(() => {
-      setState(prev => {
-        const newState = { ...prev, lastSaved: Date.now() };
-        localStorage.setItem(SAVE_KEY, JSON.stringify(newState));
-        return newState;
-      });
+    const saveInterval = setInterval(() => {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, lastSaved: Date.now() }));
     }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => clearInterval(saveInterval);
+  }, [state]);
+
+  // Unified Combo & Frenzy Decay Logic
+  useEffect(() => {
+    const decayInterval = setInterval(() => {
+      setCombo(prev => {
+        if (prev <= 0) {
+          if (isFrenzy) setIsFrenzy(false); // End frenzy when bar hits 0
+          return 0;
+        }
+        
+        const timeSinceLastClick = Date.now() - lastClickTimeRef.current;
+        
+        // Decay speeds
+        let decayAmount = isFrenzy ? 1.2 : 0.8; // Base decay (faster during frenzy to make it harder to maintain)
+
+        // Accelerated decay when idle
+        if (timeSinceLastClick > 1200) {
+          decayAmount = isFrenzy ? 5.0 : 8.0; 
+        } else if (timeSinceLastClick > 600) {
+          decayAmount = isFrenzy ? 2.5 : 3.5;
+        }
+
+        const nextValue = Math.max(0, prev - decayAmount);
+        
+        // If it just hit zero while we were in frenzy, turn frenzy off
+        if (nextValue === 0 && isFrenzy) {
+          setIsFrenzy(false);
+        }
+
+        return nextValue;
+      });
+    }, 100);
+    return () => clearInterval(decayInterval);
+  }, [isFrenzy]);
+
+  // Watch for the 100% threshold to trigger Frenzy
+  useEffect(() => {
+    if (combo >= 100 && !isFrenzy) {
+      setIsFrenzy(true);
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+    }
+  }, [combo, isFrenzy]);
 
   useEffect(() => {
     const ticker = setInterval(() => {
@@ -67,25 +111,50 @@ const App: React.FC = () => {
     return () => clearInterval(ticker);
   }, []);
 
+  const claimDaily = useCallback((reward: number) => {
+    setState(prev => ({
+      ...prev,
+      balance: prev.balance + reward,
+      totalEarned: prev.totalEarned + reward,
+      lastDailyClaim: Date.now()
+    }));
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  }, []);
+
   const handleManualClick = useCallback((x: number, y: number) => {
-    const power = state.clickPower;
+    lastClickTimeRef.current = Date.now();
+    
+    const isCrit = Math.random() < 0.05;
+    const frenzyMult = isFrenzy ? 5 : 1;
+    const critMult = isCrit ? 10 : 1;
+    const power = state.clickPower * frenzyMult * critMult;
+
     setState(prev => ({
       ...prev,
       balance: prev.balance + power,
       totalEarned: prev.totalEarned + power
     }));
 
-    const id = Date.now();
-    setPops(prev => [...prev, { id, x, y, value: power }]);
+    // Update Combo:
+    // Gain 5% per click in normal mode.
+    // In Frenzy, gain 2% back to sustain the mode (fuel injection).
+    setCombo(prev => {
+      const gain = isFrenzy ? 2 : 5;
+      return Math.min(100, prev + gain);
+    });
+
+    const id = Date.now() + Math.random();
+    setPops(prev => [...prev, { id, x, y, value: power, isCrit }]);
     setTimeout(() => {
       setPops(prev => prev.filter(p => p.id !== id));
     }, 800);
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred('medium');
+      tg.HapticFeedback.impactOccurred(isCrit ? 'heavy' : 'light');
     }
-  }, [state.clickPower]);
+  }, [state.clickPower, isFrenzy]);
 
   const buyUpgrade = useCallback((upgradeId: string) => {
     const upgrade = UPGRADES.find(u => u.id === upgradeId);
@@ -145,15 +214,6 @@ const App: React.FC = () => {
     }));
   }, []);
 
-  const claimDaily = useCallback((reward: number) => {
-    setState(prev => ({
-      ...prev,
-      balance: prev.balance + reward,
-      totalEarned: prev.totalEarned + reward,
-      lastDailyClaim: Date.now()
-    }));
-  }, []);
-
   const addToInventory = useCallback((item: CaseItem, purchasePrice: number) => {
     const newEntry: InventoryItem = {
       id: Math.random().toString(36).substr(2, 9) + Date.now(),
@@ -178,8 +238,6 @@ const App: React.FC = () => {
         inventory: prev.inventory.filter(i => i.id !== id)
       };
     });
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
   }, []);
 
   const sellAllItems = useCallback(() => {
@@ -193,12 +251,30 @@ const App: React.FC = () => {
         inventory: []
       };
     });
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
   }, []);
 
+  const cookDish = useCallback(() => {
+    if (state.inventory.length < 3) return;
+    
+    setState(prev => {
+      const itemsToCook = prev.inventory.slice(0, 3);
+      const totalCost = itemsToCook.reduce((acc, i) => acc + i.purchasePrice, 0);
+      const averageMult = itemsToCook.reduce((acc, i) => acc + i.item.multiplier, 0) / 3;
+      const dishValue = Math.floor(totalCost * averageMult * 2.5);
+      
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg) tg.showPopup({ title: 'Masterpiece Cooked!', message: `Your 3-item combo sold for a massive $${dishValue.toLocaleString()}!` });
+
+      return {
+        ...prev,
+        balance: prev.balance + dishValue,
+        inventory: prev.inventory.slice(3)
+      };
+    });
+  }, [state.inventory]);
+
   return (
-    <div className="flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden">
+    <div className={`flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden transition-colors duration-500 ${isFrenzy ? 'bg-amber-900/20' : ''}`}>
       <Header balance={state.balance} passiveIncome={state.passiveIncome} />
       
       <main className="flex-1 overflow-y-auto pb-24 relative">
@@ -208,6 +284,8 @@ const App: React.FC = () => {
             pops={pops} 
             clickPower={state.clickPower}
             activeSkinId={state.activeSkin}
+            combo={combo}
+            isFrenzy={isFrenzy}
           />
         )}
         {activeTab === TabType.SHOP && (
@@ -238,6 +316,7 @@ const App: React.FC = () => {
             items={state.inventory}
             onSell={sellItem}
             onSellAll={sellAllItems}
+            onCook={cookDish}
           />
         )}
         {activeTab === TabType.TASKS && (
