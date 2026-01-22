@@ -1,0 +1,7 @@
+{
+  "name": "Master Chef Clicker: Restaurant Empire",
+  "description": "A high-stakes culinary clicker game where you build a restaurant empire, hire staff, and gamble your way to the top of the food chain.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
