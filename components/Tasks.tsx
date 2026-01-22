@@ -19,17 +19,11 @@ const Tasks: React.FC<TasksProps> = ({ state, onClaim }) => {
       onClaim(reward);
       
       const tg = (window as any).Telegram?.WebApp;
-      const message = `You've received $${reward.toLocaleString()} from the Health Inspector!`;
+      const message = `You've received $${reward.toLocaleString()} from the Health Inspector! (Wait, why did he give us money?)`;
       
       if (tg) {
-        if (tg.isVersionAtLeast('6.2')) {
-          tg.showPopup({
-            title: 'Daily Reward!',
-            message: message + ' (Wait, why did he give us money?)'
-          });
-        } else {
-          alert(message);
-        }
+        // showAlert is supported in version 6.0+
+        tg.showAlert(message);
       } else {
         alert(message);
       }

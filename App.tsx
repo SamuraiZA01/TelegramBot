@@ -13,8 +13,8 @@ import Header from './components/Header.tsx';
 import Navigation from './components/Navigation.tsx';
 import { supabase } from './lib/supabase.ts';
 
-// REPLACE THIS WITH YOUR REAL BLOCK ID FROM ADSGRAM
-const ADSGRAM_BLOCK_ID = "YOUR_BLOCK_ID_HERE";
+// IMPORTANT: Ensure this is the correct block ID from your AdsGram dashboard
+const ADSGRAM_BLOCK_ID = "21602"; 
 
 const App: React.FC = () => {
   const [state, setState] = useState<GameState>(() => {
@@ -34,9 +34,7 @@ const App: React.FC = () => {
         const elapsedSecs = Math.max(0, Math.floor((now - (parsed.lastSaved || now)) / 1000));
         const merged = { ...INITIAL_STATE, ...defaultIdentity, ...parsed };
         
-        // Calculate passive income earned while away
         if (elapsedSecs > 0 && merged.passiveIncome > 0) {
-          // Note: Offline income doesn't benefit from boosts for simplicity
           const offlineIncome = Math.min(merged.passiveIncome * elapsedSecs, merged.passiveIncome * 3600 * 4);
           merged.balance += offlineIncome;
           merged.totalEarned += offlineIncome;
@@ -63,7 +61,6 @@ const App: React.FC = () => {
   const [isFrenzy, setIsFrenzy] = useState(false);
   const lastClickTimeRef = useRef<number>(Date.now());
 
-  // Check if boost is active
   const isBoostActive = state.activeBoost && state.activeBoost.endTime > Date.now();
   const currentMultiplier = isBoostActive ? 2 : 1;
 
@@ -171,25 +168,49 @@ const App: React.FC = () => {
     (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred(isCrit ? 'heavy' : 'light');
   }, [state.clickPower, isFrenzy]);
 
+  const showAppAlert = (message: string) => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.showAlert) {
+      tg.showAlert(message);
+    } else {
+      alert(message);
+    }
+  };
+
   const triggerAdsGramAd = useCallback(() => {
-    const AdController = (window as any).Adsgram?.init({ blockId: 21602 });
-    if (!AdController) {
-      // Fallback for testing environment if SDK not found
-      console.warn("AdsGram SDK not initialized. Activating mock reward for 10 seconds.");
-      activateBoost(10000); 
+    const tg = (window as any).Telegram?.WebApp;
+    const adsgram = (window as any).Adsgram || (window as any).AdsGram;
+    
+    console.log("Triggering Ad... SDK Found:", !!adsgram, "Block ID:", ADSGRAM_BLOCK_ID);
+
+    if (!adsgram) {
+      showAppAlert("Ad network script failed to load. Please check your internet or disable Ad-Blockers!");
       return;
     }
 
-    AdController.show().then((result: any) => {
-      // result: { done: boolean, description: string }
-      if (result.done) {
-        // User finished ad
-        activateBoost(300000); // 5 minutes = 300,000ms
-        (window as any).Telegram?.WebApp?.showAlert("Boost Activated! 2x Revenue for 5 minutes!");
-      }
-    }).catch((err: any) => {
-      console.error("Ad failed:", err);
-    });
+    try {
+      tg?.HapticFeedback?.impactOccurred('medium');
+      const AdController = adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+
+      AdController.show()
+        .then((result: any) => {
+          console.log("Ad Result:", result);
+          if (result && result.done) {
+            activateBoost(300000); 
+            showAppAlert("Great work, Chef! 2x Revenue activated for 5 minutes!");
+          } else {
+            showAppAlert("You didn't finish the ad, so no boost was granted.");
+          }
+        })
+        .catch((err: any) => {
+          console.error("AdsGram Show Catch:", err);
+          const errorMsg = err?.description || "No ads available right now. Please try again later!";
+          showAppAlert(errorMsg);
+        });
+    } catch (error) {
+      console.error("AdsGram Initialization Crash:", error);
+      showAppAlert("Failed to initialize the ad player. Make sure you are in a supported environment!");
+    }
   }, []);
 
   const activateBoost = (durationMs: number) => {
