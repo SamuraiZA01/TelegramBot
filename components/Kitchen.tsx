@@ -11,12 +11,13 @@ interface KitchenProps {
   combo: number;
   isFrenzy: boolean;
   isBoostActive?: boolean;
+  isAdSdkReady?: boolean;
   onWatchAd?: () => void;
 }
 
 const INGREDIENTS = ['🍅', '🧅', '🧂', '🥩', '🥓', '🍞', '🧀', '🧄', '🥦', '🌶️'];
 
-const Kitchen: React.FC<KitchenProps> = ({ onClick, pops, clickPower, activeSkinId, combo, isFrenzy, isBoostActive, onWatchAd }) => {
+const Kitchen: React.FC<KitchenProps> = ({ onClick, pops, clickPower, activeSkinId, combo, isFrenzy, isBoostActive, isAdSdkReady, onWatchAd }) => {
   const [isPressed, setIsPressed] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
   const activeSkin = SKINS.find(s => s.id === activeSkinId) || SKINS[0];
@@ -82,13 +83,18 @@ const Kitchen: React.FC<KitchenProps> = ({ onClick, pops, clickPower, activeSkin
           {activeSkin.name}
         </h2>
         
-        {/* Ad Boost Button */}
+        {/* Ad Boost Button with States */}
         {!isBoostActive && (
           <button 
             onClick={onWatchAd}
-            className="mt-2 bg-gradient-to-r from-amber-600 to-amber-400 text-slate-950 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse hover:scale-105 transition-transform"
+            disabled={!isAdSdkReady}
+            className={`mt-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+              !isAdSdkReady 
+              ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50' 
+              : 'bg-gradient-to-r from-amber-600 to-amber-400 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse hover:scale-105 active:scale-95'
+            }`}
           >
-            📺 Get FREE 2x Boost
+            {isAdSdkReady ? '📺 Get FREE 2x Boost' : '⏳ Checking Network...'}
           </button>
         )}
         

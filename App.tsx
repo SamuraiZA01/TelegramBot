@@ -13,7 +13,6 @@ import Header from './components/Header.tsx';
 import Navigation from './components/Navigation.tsx';
 import { supabase } from './lib/supabase.ts';
 
-// IMPORTANT: Ensure this is the correct block ID from your AdsGram dashboard
 const ADSGRAM_BLOCK_ID = "21602"; 
 
 const App: React.FC = () => {
@@ -50,10 +49,31 @@ const App: React.FC = () => {
   const stateRef = useRef<GameState>(state);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [lastError, setLastError] = useState<string | null>(null);
+  const [isAdSdkReady, setIsAdSdkReady] = useState(false);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // SDK Polling Logic
+  useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 20; // 10 seconds total
+    const interval = setInterval(() => {
+      const adsgram = (window as any).Adsgram || (window as any).AdsGram;
+      if (adsgram) {
+        setIsAdSdkReady(true);
+        clearInterval(interval);
+        console.log("AdsGram SDK Detected and Ready.");
+      }
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.warn("AdsGram SDK failed to load after 10s.");
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<TabType>(TabType.KITCHEN);
   const [pops, setPops] = useState<ClickPop[]>([]);
@@ -179,13 +199,10 @@ const App: React.FC = () => {
 
   const triggerAdsGramAd = useCallback(() => {
     const tg = (window as any).Telegram?.WebApp;
-    // SDK check: try standard and capitalised G
     const adsgram = (window as any).Adsgram || (window as any).AdsGram;
     
-    console.log("Ad Trigger - SDK detected:", !!adsgram);
-
     if (!adsgram) {
-      showAppAlert("Ad system is not responding. If you have an Ad-Blocker, please disable it for Telegram.");
+      showAppAlert("Ad system is currently unavailable. This may be due to a poor connection or the network being temporarily down in your region.");
       return;
     }
 
@@ -196,21 +213,20 @@ const App: React.FC = () => {
       AdController.show()
         .then((result: any) => {
           if (result && result.done) {
-            activateBoost(300000); // 5 mins
-            showAppAlert("Chef's Secret Ingredient: 2x Revenue activated for 5 minutes!");
+            activateBoost(300000); 
+            showAppAlert("Success! 2x Revenue activated for 5 minutes.");
           } else {
-            showAppAlert("Ad was not completed. No boost granted.");
+            showAppAlert("The ad wasn't fully watched, so no boost was rewarded.");
           }
         })
         .catch((err: any) => {
-          console.error("AdsGram Error:", err);
-          // err.description usually contains the failure reason (e.g. "No ads available")
-          const msg = err?.description || "Failed to load ad. Please check your internet or try again later.";
+          console.error("AdsGram Show Catch:", err);
+          const msg = err?.description || "No ads available in your area right now. Please try again in a few minutes!";
           showAppAlert(msg);
         });
     } catch (e) {
-      console.error("AdsGram Exception:", e);
-      showAppAlert("Critical error initializing ad player.");
+      console.error("AdsGram Crash:", e);
+      showAppAlert("Failed to start the ad player. Please try again later.");
     }
   }, []);
 
@@ -341,6 +357,7 @@ const App: React.FC = () => {
             combo={combo} 
             isFrenzy={isFrenzy} 
             isBoostActive={isBoostActive}
+            isAdSdkReady={isAdSdkReady}
             onWatchAd={triggerAdsGramAd}
           />
         )}
