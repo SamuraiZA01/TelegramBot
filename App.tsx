@@ -67,7 +67,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // PERSISTENCE: Sync with Supabase Leaderboard
   const syncToSupabase = useCallback(async (data: GameState) => {
     setSyncStatus('syncing');
     setLastError(null);
@@ -82,21 +81,18 @@ const App: React.FC = () => {
         }, { onConflict: 'user_id' });
       
       if (error) {
-        console.error("Supabase Sync Error:", error);
         setSyncStatus('error');
-        setLastError(error.message || "Table 'leaderboard' not found or RLS denied.");
+        setLastError(error.message);
       } else {
         setSyncStatus('success');
         setTimeout(() => setSyncStatus('idle'), 3000);
       }
     } catch (err: any) {
-      console.error("Supabase Connection Fail:", err);
       setSyncStatus('error');
-      setLastError(err.message || "Connection Failed. Check your Internet or API Key.");
+      setLastError(err.message);
     }
   }, []);
 
-  // Initial Sync on Mount
   useEffect(() => {
     syncToSupabase(state);
   }, []);
@@ -105,36 +101,20 @@ const App: React.FC = () => {
     const data = customState || stateRef.current;
     const toSave = { ...data, lastSaved: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(toSave));
-    
-    // Only sync to cloud on major state changes to save bandwidth
     if (customState) {
       syncToSupabase(toSave);
     }
   }, [syncToSupabase]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      saveNow();
-    }, 5000); // Background auto-save for local balance
-
-    const handleExit = () => saveNow();
-    window.addEventListener('beforeunload', handleExit);
-    window.addEventListener('pagehide', handleExit);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('beforeunload', handleExit);
-    };
+    const interval = setInterval(() => saveNow(), 5000);
+    return () => clearInterval(interval);
   }, [saveNow]);
 
-  // Combo & Passive Income Logics
   useEffect(() => {
     const decayInterval = setInterval(() => {
       setCombo(prev => {
-        if (prev <= 0) {
-          if (isFrenzy) setIsFrenzy(false);
-          return 0;
-        }
+        if (prev <= 0) { if (isFrenzy) setIsFrenzy(false); return 0; }
         const timeSinceLastClick = Date.now() - lastClickTimeRef.current;
         let decayAmount = isFrenzy ? 1.4 : 0.9;
         if (timeSinceLastClick > 1200) decayAmount = isFrenzy ? 6.0 : 9.0;
@@ -149,8 +129,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (combo >= 100 && !isFrenzy) {
       setIsFrenzy(true);
-      const tg = (window as any).Telegram?.WebApp;
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+      (window as any).Telegram?.WebApp?.HapticFeedback?.notificationOccurred('warning');
     }
   }, [combo, isFrenzy]);
 
@@ -174,8 +153,7 @@ const App: React.FC = () => {
     const id = Date.now() + Math.random();
     setPops(prev => [...prev, { id, x, y, value: power, isCrit }]);
     setTimeout(() => setPops(prev => prev.filter(p => p.id !== id)), 800);
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred(isCrit ? 'heavy' : 'light');
+    (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred(isCrit ? 'heavy' : 'light');
   }, [state.clickPower, isFrenzy]);
 
   const buyUpgrade = useCallback((upgradeId: string) => {
@@ -240,6 +218,16 @@ const App: React.FC = () => {
     });
   }, [saveNow]);
 
+  const sellAllItems = useCallback(() => {
+    setState(prev => {
+      if (prev.inventory.length === 0) return prev;
+      const totalSale = prev.inventory.reduce((acc, entry) => acc + Math.floor(entry.purchasePrice * entry.item.multiplier), 0);
+      const newState = { ...prev, balance: prev.balance + totalSale, inventory: [] };
+      saveNow(newState);
+      return newState;
+    });
+  }, [saveNow]);
+
   const cookDish = useCallback(() => {
     if (state.inventory.length < 3) return;
     setState(prev => {
@@ -263,20 +251,14 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden transition-colors duration-500 ${isFrenzy ? 'bg-amber-900/20' : ''}`}>
-      <Header 
-        balance={state.balance} 
-        passiveIncome={state.passiveIncome} 
-        syncStatus={syncStatus} 
-        lastError={lastError}
-        onRetrySync={() => syncToSupabase(state)}
-      />
+      <Header balance={state.balance} passiveIncome={state.passiveIncome} syncStatus={syncStatus} lastError={lastError} onRetrySync={() => syncToSupabase(state)} />
       <main className="flex-1 overflow-y-auto pb-24 relative">
         {activeTab === TabType.KITCHEN && <Kitchen onClick={handleManualClick} pops={pops} clickPower={state.clickPower} activeSkinId={state.activeSkin} combo={combo} isFrenzy={isFrenzy} />}
         {activeTab === TabType.SHOP && <Shop upgrades={state.upgrades} balance={state.balance} onBuy={buyUpgrade} />}
         {activeTab === TabType.LEADERBOARD && <Leaderboard userEarnings={state.totalEarned} userId={state.userId} />}
         {activeTab === TabType.SKINS && <Skins ownedSkins={state.ownedSkins} activeSkin={state.activeSkin} balance={state.balance} onBuy={buySkin} onEquip={equipSkin} />}
         {activeTab === TabType.CASINO && <Casino balance={state.balance} onWager={modifyBalance} onWin={addToInventory} />}
-        {activeTab === TabType.INVENTORY && <Inventory items={state.inventory} onSell={sellItem} onSellAll={() => {}} onCook={cookDish} />}
+        {activeTab === TabType.INVENTORY && <Inventory items={state.inventory} onSell={sellItem} onSellAll={sellAllItems} onCook={cookDish} />}
         {activeTab === TabType.TASKS && <Tasks state={state} onClaim={claimDaily} />}
       </main>
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
