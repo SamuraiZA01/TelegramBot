@@ -179,12 +179,13 @@ const App: React.FC = () => {
 
   const triggerAdsGramAd = useCallback(() => {
     const tg = (window as any).Telegram?.WebApp;
+    // SDK check: try standard and capitalised G
     const adsgram = (window as any).Adsgram || (window as any).AdsGram;
     
-    console.log("Triggering Ad... SDK Found:", !!adsgram, "Block ID:", ADSGRAM_BLOCK_ID);
+    console.log("Ad Trigger - SDK detected:", !!adsgram);
 
     if (!adsgram) {
-      showAppAlert("Ad network script failed to load. Please check your internet or disable Ad-Blockers!");
+      showAppAlert("Ad system is not responding. If you have an Ad-Blocker, please disable it for Telegram.");
       return;
     }
 
@@ -194,22 +195,22 @@ const App: React.FC = () => {
 
       AdController.show()
         .then((result: any) => {
-          console.log("Ad Result:", result);
           if (result && result.done) {
-            activateBoost(300000); 
-            showAppAlert("Great work, Chef! 2x Revenue activated for 5 minutes!");
+            activateBoost(300000); // 5 mins
+            showAppAlert("Chef's Secret Ingredient: 2x Revenue activated for 5 minutes!");
           } else {
-            showAppAlert("You didn't finish the ad, so no boost was granted.");
+            showAppAlert("Ad was not completed. No boost granted.");
           }
         })
         .catch((err: any) => {
-          console.error("AdsGram Show Catch:", err);
-          const errorMsg = err?.description || "No ads available right now. Please try again later!";
-          showAppAlert(errorMsg);
+          console.error("AdsGram Error:", err);
+          // err.description usually contains the failure reason (e.g. "No ads available")
+          const msg = err?.description || "Failed to load ad. Please check your internet or try again later.";
+          showAppAlert(msg);
         });
-    } catch (error) {
-      console.error("AdsGram Initialization Crash:", error);
-      showAppAlert("Failed to initialize the ad player. Make sure you are in a supported environment!");
+    } catch (e) {
+      console.error("AdsGram Exception:", e);
+      showAppAlert("Critical error initializing ad player.");
     }
   }, []);
 
