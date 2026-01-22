@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface HeaderProps {
   balance: number;
@@ -7,15 +7,38 @@ interface HeaderProps {
   syncStatus?: 'idle' | 'syncing' | 'success' | 'error';
   lastError?: string | null;
   onRetrySync?: () => void;
+  boostEndTime?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ balance, passiveIncome, syncStatus = 'idle', lastError, onRetrySync }) => {
+const Header: React.FC<HeaderProps> = ({ balance, passiveIncome, syncStatus = 'idle', lastError, onRetrySync, boostEndTime }) => {
   const [showError, setShowError] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!boostEndTime || boostEndTime <= Date.now()) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const diff = boostEndTime - now;
+      if (diff <= 0) {
+        setTimeLeft(null);
+        clearInterval(interval);
+      } else {
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${mins}:${secs < 10 ? '0' : ''}${secs}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [boostEndTime]);
 
   return (
     <header className="p-4 bg-slate-900 border-b border-slate-700 shadow-xl flex justify-between items-center z-50 relative">
       <div className="flex items-center gap-3">
-        {/* Sync Indicator */}
         <div 
           onClick={() => {
             if (syncStatus === 'error') setShowError(!showError);
@@ -33,7 +56,6 @@ const Header: React.FC<HeaderProps> = ({ balance, passiveIncome, syncStatus = 'i
           {syncStatus === 'idle' && <span className="text-slate-700 text-sm">☁️</span>}
         </div>
         
-        {/* Error Info Box */}
         {showError && syncStatus === 'error' && (
           <div className="absolute top-16 left-4 right-4 bg-rose-950 border border-rose-500 p-4 rounded-2xl shadow-2xl z-[100] animate-in slide-in-from-top-2 duration-200">
             <h4 className="text-rose-400 font-black text-[10px] uppercase tracking-widest mb-1">Database Error</h4>
@@ -59,7 +81,15 @@ const Header: React.FC<HeaderProps> = ({ balance, passiveIncome, syncStatus = 'i
         </div>
       </div>
       <div className="text-right">
-        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Production</p>
+        <div className="flex items-center justify-end gap-2">
+           {timeLeft && (
+              <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/50 px-2 py-0.5 rounded-lg animate-pulse">
+                <span className="text-amber-500 text-[10px] font-black uppercase">2x</span>
+                <span className="text-amber-200 text-[10px] font-mono font-bold">{timeLeft}</span>
+              </div>
+           )}
+           <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Production</p>
+        </div>
         <p className="text-lg font-bold text-emerald-400">
           +${passiveIncome.toLocaleString()}/s
         </p>

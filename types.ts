@@ -26,7 +26,6 @@ export interface InventoryItem {
   unboxedAt: number;
 }
 
-// Added Upgrade interface to define restaurant upgrades for the shop
 export interface Upgrade {
   id: string;
   name: string;
@@ -37,7 +36,6 @@ export interface Upgrade {
   type: 'staff' | 'equipment';
 }
 
-// Added Skin interface for chef character cosmetics
 export interface Skin {
   id: string;
   name: string;
@@ -46,13 +44,17 @@ export interface Skin {
   description: string;
 }
 
-// Added UnboxingCase interface for the ingredient crate mechanics
 export interface UnboxingCase {
   id: string;
   name: string;
   cost: number;
   icon: string;
   items: CaseItem[];
+}
+
+export interface ActiveBoost {
+  multiplier: number;
+  endTime: number;
 }
 
 export interface GameState {
@@ -70,6 +72,7 @@ export interface GameState {
   dailyStreak: number;
   lastDailyClaim: number;
   unlockedDishes: string[];
+  activeBoost?: ActiveBoost;
 }
 
 export interface ClickPop {

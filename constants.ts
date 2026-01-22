@@ -104,7 +104,8 @@ export const INITIAL_STATE = {
   lastSaved: Date.now(),
   dailyStreak: 0,
   lastDailyClaim: 0,
-  unlockedDishes: ['Burger']
+  unlockedDishes: ['Burger'],
+  activeBoost: { multiplier: 1, endTime: 0 }
 };
 
 export const SAVE_KEY = 'master_chef_save_v2';

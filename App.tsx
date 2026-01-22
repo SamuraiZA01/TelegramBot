@@ -13,6 +13,9 @@ import Header from './components/Header.tsx';
 import Navigation from './components/Navigation.tsx';
 import { supabase } from './lib/supabase.ts';
 
+// REPLACE THIS WITH YOUR REAL BLOCK ID FROM ADSGRAM
+const ADSGRAM_BLOCK_ID = "YOUR_BLOCK_ID_HERE";
+
 const App: React.FC = () => {
   const [state, setState] = useState<GameState>(() => {
     const saved = localStorage.getItem(SAVE_KEY);
@@ -31,7 +34,9 @@ const App: React.FC = () => {
         const elapsedSecs = Math.max(0, Math.floor((now - (parsed.lastSaved || now)) / 1000));
         const merged = { ...INITIAL_STATE, ...defaultIdentity, ...parsed };
         
+        // Calculate passive income earned while away
         if (elapsedSecs > 0 && merged.passiveIncome > 0) {
+          // Note: Offline income doesn't benefit from boosts for simplicity
           const offlineIncome = Math.min(merged.passiveIncome * elapsedSecs, merged.passiveIncome * 3600 * 4);
           merged.balance += offlineIncome;
           merged.totalEarned += offlineIncome;
@@ -57,6 +62,10 @@ const App: React.FC = () => {
   const [combo, setCombo] = useState(0);
   const [isFrenzy, setIsFrenzy] = useState(false);
   const lastClickTimeRef = useRef<number>(Date.now());
+
+  // Check if boost is active
+  const isBoostActive = state.activeBoost && state.activeBoost.endTime > Date.now();
+  const currentMultiplier = isBoostActive ? 2 : 1;
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -135,11 +144,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const ticker = setInterval(() => {
-      setState(prev => ({
-        ...prev,
-        balance: prev.balance + (prev.passiveIncome / 10),
-        totalEarned: prev.totalEarned + (prev.passiveIncome / 10)
-      }));
+      setState(prev => {
+        const boostVal = prev.activeBoost && prev.activeBoost.endTime > Date.now() ? 2 : 1;
+        const perTick = (prev.passiveIncome * boostVal) / 10;
+        return {
+          ...prev,
+          balance: prev.balance + perTick,
+          totalEarned: prev.totalEarned + perTick
+        };
+      });
     }, 100);
     return () => clearInterval(ticker);
   }, []);
@@ -147,7 +160,9 @@ const App: React.FC = () => {
   const handleManualClick = useCallback((x: number, y: number) => {
     lastClickTimeRef.current = Date.now();
     const isCrit = Math.random() < 0.05;
-    const power = state.clickPower * (isFrenzy ? 5 : 1) * (isCrit ? 10 : 1);
+    const boostMult = (stateRef.current.activeBoost && stateRef.current.activeBoost.endTime > Date.now()) ? 2 : 1;
+    const power = state.clickPower * (isFrenzy ? 5 : 1) * (isCrit ? 10 : 1) * boostMult;
+    
     setState(prev => ({ ...prev, balance: prev.balance + power, totalEarned: prev.totalEarned + power }));
     setCombo(prev => Math.min(100, prev + (isFrenzy ? 2.5 : 6.0)));
     const id = Date.now() + Math.random();
@@ -155,6 +170,41 @@ const App: React.FC = () => {
     setTimeout(() => setPops(prev => prev.filter(p => p.id !== id)), 800);
     (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred(isCrit ? 'heavy' : 'light');
   }, [state.clickPower, isFrenzy]);
+
+  const triggerAdsGramAd = useCallback(() => {
+    const AdController = (window as any).Adsgram?.init({ blockId: 21602 });
+    if (!AdController) {
+      // Fallback for testing environment if SDK not found
+      console.warn("AdsGram SDK not initialized. Activating mock reward for 10 seconds.");
+      activateBoost(10000); 
+      return;
+    }
+
+    AdController.show().then((result: any) => {
+      // result: { done: boolean, description: string }
+      if (result.done) {
+        // User finished ad
+        activateBoost(300000); // 5 minutes = 300,000ms
+        (window as any).Telegram?.WebApp?.showAlert("Boost Activated! 2x Revenue for 5 minutes!");
+      }
+    }).catch((err: any) => {
+      console.error("Ad failed:", err);
+    });
+  }, []);
+
+  const activateBoost = (durationMs: number) => {
+    setState(prev => {
+      const newState = { 
+        ...prev, 
+        activeBoost: { 
+          multiplier: 2, 
+          endTime: Date.now() + durationMs 
+        } 
+      };
+      saveNow(newState);
+      return newState;
+    });
+  };
 
   const buyUpgrade = useCallback((upgradeId: string) => {
     const upgrade = UPGRADES.find(u => u.id === upgradeId);
@@ -251,9 +301,27 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden transition-colors duration-500 ${isFrenzy ? 'bg-amber-900/20' : ''}`}>
-      <Header balance={state.balance} passiveIncome={state.passiveIncome} syncStatus={syncStatus} lastError={lastError} onRetrySync={() => syncToSupabase(state)} />
+      <Header 
+        balance={state.balance} 
+        passiveIncome={state.passiveIncome * currentMultiplier} 
+        syncStatus={syncStatus} 
+        lastError={lastError} 
+        onRetrySync={() => syncToSupabase(state)}
+        boostEndTime={state.activeBoost?.endTime}
+      />
       <main className="flex-1 overflow-y-auto pb-24 relative">
-        {activeTab === TabType.KITCHEN && <Kitchen onClick={handleManualClick} pops={pops} clickPower={state.clickPower} activeSkinId={state.activeSkin} combo={combo} isFrenzy={isFrenzy} />}
+        {activeTab === TabType.KITCHEN && (
+          <Kitchen 
+            onClick={handleManualClick} 
+            pops={pops} 
+            clickPower={state.clickPower} 
+            activeSkinId={state.activeSkin} 
+            combo={combo} 
+            isFrenzy={isFrenzy} 
+            isBoostActive={isBoostActive}
+            onWatchAd={triggerAdsGramAd}
+          />
+        )}
         {activeTab === TabType.SHOP && <Shop upgrades={state.upgrades} balance={state.balance} onBuy={buyUpgrade} />}
         {activeTab === TabType.LEADERBOARD && <Leaderboard userEarnings={state.totalEarned} userId={state.userId} />}
         {activeTab === TabType.SKINS && <Skins ownedSkins={state.ownedSkins} activeSkin={state.activeSkin} balance={state.balance} onBuy={buySkin} onEquip={equipSkin} />}
