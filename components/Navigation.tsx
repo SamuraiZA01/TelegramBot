@@ -11,7 +11,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: TabType.KITCHEN, label: 'Kitchen', icon: '🍳' },
     { id: TabType.SHOP, label: 'Shop', icon: '🏪' },
-    { id: TabType.SKINS, label: 'Skins', icon: '👕' },
+    { id: TabType.LEADERBOARD, label: 'World', icon: '🏆' },
     { id: TabType.CASINO, label: 'Casino', icon: '🎲' },
     { id: TabType.INVENTORY, label: 'Pantry', icon: '📦' },
     { id: TabType.TASKS, label: 'Tasks', icon: '📝' },

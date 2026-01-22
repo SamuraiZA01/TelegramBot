@@ -1,5 +1,6 @@
 
-import { Upgrade, Skin, CaseItem, UnboxingCase } from './types';
+// Fixed import path and ensured it points to the updated types.ts
+import { Upgrade, Skin, CaseItem, UnboxingCase } from './types.ts';
 
 // Appetizer Case Items (Budget) - Cost: $50
 export const APPETIZER_ITEMS: CaseItem[] = [

@@ -5,7 +5,8 @@ export enum TabType {
   SKINS = 'SKINS',
   CASINO = 'CASINO',
   TASKS = 'TASKS',
-  INVENTORY = 'INVENTORY'
+  INVENTORY = 'INVENTORY',
+  LEADERBOARD = 'LEADERBOARD'
 }
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary' | 'exotic';
@@ -25,14 +26,7 @@ export interface InventoryItem {
   unboxedAt: number;
 }
 
-export interface UnboxingCase {
-  id: string;
-  name: string;
-  cost: number;
-  icon: string;
-  items: CaseItem[];
-}
-
+// Added Upgrade interface to define restaurant upgrades for the shop
 export interface Upgrade {
   id: string;
   name: string;
@@ -43,6 +37,7 @@ export interface Upgrade {
   type: 'staff' | 'equipment';
 }
 
+// Added Skin interface for chef character cosmetics
 export interface Skin {
   id: string;
   name: string;
@@ -51,17 +46,18 @@ export interface Skin {
   description: string;
 }
 
-export interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  emoji: string;
-  rotation: number;
+// Added UnboxingCase interface for the ingredient crate mechanics
+export interface UnboxingCase {
+  id: string;
+  name: string;
+  cost: number;
+  icon: string;
+  items: CaseItem[];
 }
 
 export interface GameState {
+  userId: string;
+  username: string;
   balance: number;
   totalEarned: number;
   passiveIncome: number;
@@ -82,4 +78,14 @@ export interface ClickPop {
   y: number;
   value: number;
   isCrit: boolean;
+}
+
+export interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  emoji: string;
+  rotation: number;
 }
