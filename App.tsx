@@ -46,6 +46,7 @@ const App: React.FC = () => {
 
   const stateRef = useRef<GameState>(state);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -69,6 +70,7 @@ const App: React.FC = () => {
   // PERSISTENCE: Sync with Supabase Leaderboard
   const syncToSupabase = useCallback(async (data: GameState) => {
     setSyncStatus('syncing');
+    setLastError(null);
     try {
       const { error } = await supabase
         .from('leaderboard')
@@ -80,15 +82,17 @@ const App: React.FC = () => {
         }, { onConflict: 'user_id' });
       
       if (error) {
-        console.error("Supabase sync error:", error.message);
+        console.error("Supabase Sync Error:", error);
         setSyncStatus('error');
+        setLastError(error.message || "Table 'leaderboard' not found or RLS denied.");
       } else {
         setSyncStatus('success');
         setTimeout(() => setSyncStatus('idle'), 3000);
       }
-    } catch (err) {
-      console.error("Supabase fail:", err);
+    } catch (err: any) {
+      console.error("Supabase Connection Fail:", err);
       setSyncStatus('error');
+      setLastError(err.message || "Connection Failed. Check your Internet or API Key.");
     }
   }, []);
 
@@ -259,7 +263,13 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden transition-colors duration-500 ${isFrenzy ? 'bg-amber-900/20' : ''}`}>
-      <Header balance={state.balance} passiveIncome={state.passiveIncome} syncStatus={syncStatus} />
+      <Header 
+        balance={state.balance} 
+        passiveIncome={state.passiveIncome} 
+        syncStatus={syncStatus} 
+        lastError={lastError}
+        onRetrySync={() => syncToSupabase(state)}
+      />
       <main className="flex-1 overflow-y-auto pb-24 relative">
         {activeTab === TabType.KITCHEN && <Kitchen onClick={handleManualClick} pops={pops} clickPower={state.clickPower} activeSkinId={state.activeSkin} combo={combo} isFrenzy={isFrenzy} />}
         {activeTab === TabType.SHOP && <Shop upgrades={state.upgrades} balance={state.balance} onBuy={buyUpgrade} />}
