@@ -45,6 +45,8 @@ const App: React.FC = () => {
   });
 
   const stateRef = useRef<GameState>(state);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -66,6 +68,7 @@ const App: React.FC = () => {
 
   // PERSISTENCE: Sync with Supabase Leaderboard
   const syncToSupabase = useCallback(async (data: GameState) => {
+    setSyncStatus('syncing');
     try {
       const { error } = await supabase
         .from('leaderboard')
@@ -76,10 +79,22 @@ const App: React.FC = () => {
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
       
-      if (error) console.error("Supabase sync error:", error.message);
+      if (error) {
+        console.error("Supabase sync error:", error.message);
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('success');
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      }
     } catch (err) {
       console.error("Supabase fail:", err);
+      setSyncStatus('error');
     }
+  }, []);
+
+  // Initial Sync on Mount
+  useEffect(() => {
+    syncToSupabase(state);
   }, []);
 
   const saveNow = useCallback((customState?: GameState) => {
@@ -96,7 +111,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       saveNow();
-    }, 5000); // Background auto-save for balance
+    }, 5000); // Background auto-save for local balance
 
     const handleExit = () => saveNow();
     window.addEventListener('beforeunload', handleExit);
@@ -244,7 +259,7 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen text-slate-100 kitchen-bg overflow-hidden transition-colors duration-500 ${isFrenzy ? 'bg-amber-900/20' : ''}`}>
-      <Header balance={state.balance} passiveIncome={state.passiveIncome} />
+      <Header balance={state.balance} passiveIncome={state.passiveIncome} syncStatus={syncStatus} />
       <main className="flex-1 overflow-y-auto pb-24 relative">
         {activeTab === TabType.KITCHEN && <Kitchen onClick={handleManualClick} pops={pops} clickPower={state.clickPower} activeSkinId={state.activeSkin} combo={combo} isFrenzy={isFrenzy} />}
         {activeTab === TabType.SHOP && <Shop upgrades={state.upgrades} balance={state.balance} onBuy={buyUpgrade} />}
